@@ -32,7 +32,15 @@ function partOne(input: string[]): number {
 }
 
 function partTwo(input: string[]): number {
-  return 0;
+  return input.reduce(function (total, line) {
+    const ranges = parseLine(line);
+
+    if (overlap(...ranges)) {
+      return total + 1;
+    }
+
+    return total;
+  }, 0);
 }
 
 function parseLine(line: string): [Range, Range] {
@@ -66,4 +74,15 @@ function parseLine(line: string): [Range, Range] {
 function contains(x: Range, y: Range): boolean {
   // return whether x completely contains y
   return y.start >= x.start && y.end <= x.end;
+}
+
+function overlap(x: Range, y: Range): boolean {
+  // whether y overlaps with x
+
+  return (
+    (y.start >= x.start && y.start <= x.end) ||
+    (y.end >= x.start && y.end <= x.end) ||
+    (x.start >= y.start && x.start <= y.end) ||
+    (x.end >= y.start && x.end <= y.end)
+  );
 }
