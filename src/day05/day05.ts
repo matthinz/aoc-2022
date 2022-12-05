@@ -42,7 +42,20 @@ function partOne(input: string[]): string {
 }
 
 function partTwo(input: string[]): string {
-  return "";
+  const parsed = parseInput(input);
+
+  // apply moves
+
+  parsed.moves.forEach((m) => {
+    const source = parsed.stacks[m.from - 1];
+    const dest = parsed.stacks[m.to - 1];
+
+    const items = source.splice(source.length - m.count, m.count);
+
+    items.forEach((i) => dest.push(i));
+  });
+
+  return parsed.stacks.map((s) => s[s.length - 1] ?? "").join("");
 }
 
 function parseInput(input: string[]): Input {
