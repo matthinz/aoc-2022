@@ -1,5 +1,3 @@
-import { Dir } from "fs";
-import { listenerCount } from "process";
 import { getInputLines } from "../utils";
 
 type File = {
@@ -14,6 +12,7 @@ type Directory = {
 };
 
 type RootDirectory = {
+  name: "/";
   items: (File | Directory)[];
   parent?: undefined;
 };
@@ -44,11 +43,54 @@ function partOne(input: string[]): number {
 }
 
 function partTwo(input: string[]): number {
-  return 0;
+  const TOTAL_DISK_SPACE = 70000000;
+  const FREE_SPACE_NEEDED = 30000000;
+
+  const root = parse(input);
+
+  function reducer(result: Directory[], item: File | Directory): Directory[] {
+    if (isFile(item)) {
+      return result;
+    }
+    result.push(item);
+
+    return item.items.reduce(reducer, result);
+  }
+
+  const allDirsBySize = root.items.reduce<Directory[]>(reducer, []);
+  allDirsBySize.sort((x, y) => {
+    const sizeOfX = sizeOfDirectory(x);
+    const sizeOfY = sizeOfDirectory(y);
+
+    if (sizeOfX < sizeOfY) {
+      return -1;
+    } else if (sizeOfX > sizeOfY) {
+      return 1;
+    }
+
+    return 0;
+  });
+
+  const freeSpaceAvailable = TOTAL_DISK_SPACE - sizeOfDirectory(root);
+  const minDirectorySizeNeeded = FREE_SPACE_NEEDED - freeSpaceAvailable;
+
+  const dirToDelete = allDirsBySize.find((d) => {
+    const size = sizeOfDirectory(d);
+    if (size >= minDirectorySizeNeeded) {
+      return true;
+    }
+  });
+
+  if (!dirToDelete) {
+    throw new Error("no dir to delete found");
+  }
+
+  return sizeOfDirectory(dirToDelete);
 }
 
 function parse(input: string[]): RootDirectory {
   const root: RootDirectory = {
+    name: "/",
     items: [],
   };
 
@@ -132,7 +174,7 @@ function isFile(item: File | Directory): item is File {
   return !isDirectory(item);
 }
 
-function sizeOfDirectory(d: Directory): number {
+function sizeOfDirectory(d: { items: (Directory | File)[] }): number {
   return d.items.reduce((total, item) => {
     if (isFile(item)) {
       return total + item.size;
