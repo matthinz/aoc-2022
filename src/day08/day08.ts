@@ -112,7 +112,6 @@ function partTwo(input: string[]): number {
         visibleToTheTop;
 
       if (scenicScore > highestScore) {
-        console.error("%d,%d: %d", x, y, scenicScore);
         highestScore = scenicScore;
       }
     }
