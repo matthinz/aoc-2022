@@ -1,17 +1,10 @@
-import { getInputLines } from "../utils";
-
-run().catch((err) => {
-  process.exitCode = 1;
-  console.error(err);
-});
+import { getInputLines } from "../utils.ts";
 
 async function run() {
   const input = await getInputLines();
   console.log(partOne(input));
   console.log(partTwo(input));
 }
-
-const ROCK = { strength: 12 };
 
 type Player = "rock" | "paper" | "scissors";
 
@@ -21,6 +14,7 @@ type Rule = {
   value: number;
   beats: Player;
 };
+
 const rules: Rule[] = [
   {
     id: "rock",
@@ -50,6 +44,7 @@ function partOne(input: string[]): number {
     const them = rules.find((r) => r.aka.includes(theirMove));
 
     if (!me || !them) {
+      console.error(round);
       throw new Error();
     }
 
@@ -99,3 +94,5 @@ function scoreRound(me: Rule, them: Rule): number {
   }
   return score;
 }
+
+await run();

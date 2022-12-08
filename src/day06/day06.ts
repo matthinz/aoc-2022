@@ -1,9 +1,6 @@
-import { getInputLines } from "../utils";
+import { getInputLines } from "../utils.ts";
 
-run().catch((err) => {
-  process.exitCode = 1;
-  console.error(err);
-});
+await run();
 
 async function run() {
   const input = await getInputLines();

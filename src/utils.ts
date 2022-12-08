@@ -1,30 +1,35 @@
-export function getInputLines(
-  input?: string | Buffer | NodeJS.ReadStream | undefined
+import { readLines } from "https://deno.land/std@0.167.0/io/mod.ts";
+
+export async function getInputLines(
+  input?: string,
 ): Promise<string[]> {
-  return new Promise<string[]>((resolve, reject) => {
-    if (input instanceof Buffer) {
-      input = input.toString("utf-8");
+  if (typeof input === "string") {
+    input = input.trim();
+
+    if (input.length === 0) {
+      return [];
     }
 
-    if (typeof input === "string") {
-      input = input.trim();
-      if (input.length === 0) {
-        resolve([]);
-        return;
-      }
+    return input.split("\n");
+  }
 
-      resolve(input.split("\n"));
-      return;
-    }
+  const allLines: string[] = [];
 
-    const stream: NodeJS.ReadStream = input ?? process.stdin;
-    let buffer = Buffer.from("");
-    stream.on("data", (chunk) => {
-      buffer = Buffer.concat([buffer, chunk]);
-    });
-    stream.on("end", () => {
-      getInputLines(buffer).then(resolve, reject);
-    });
-    stream.on("error", reject);
-  });
+  for await (const line of readLines(Deno.stdin)) {
+    allLines.push(line);
+  }
+
+  let startIndex = 0;
+  while (
+    startIndex < allLines.length && allLines[startIndex].trim().length === 0
+  ) {
+    startIndex++;
+  }
+
+  let endIndex = allLines.length - 1;
+  while (endIndex >= startIndex && allLines[endIndex].trim().length === 0) {
+    endIndex--;
+  }
+
+  return allLines.slice(startIndex, endIndex + 1);
 }

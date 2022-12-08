@@ -1,4 +1,4 @@
-import { getInputLines } from "../utils";
+import { getInputLines } from "../utils.ts";
 
 type File = {
   name: string;
@@ -17,10 +17,7 @@ type RootDirectory = {
   parent?: undefined;
 };
 
-run().catch((err) => {
-  process.exitCode = 1;
-  console.error(err);
-});
+await run();
 
 async function run() {
   const input = await getInputLines();
@@ -34,7 +31,6 @@ function partOne(input: string[]): number {
   visitDirs(root.items, (d) => {
     const size = sizeOfDirectory(d);
     if (size <= 100000) {
-      console.error(d.name, size);
       totalSize += size;
     }
   });
@@ -137,7 +133,7 @@ function parse(input: string[]): RootDirectory {
 
     if (sizeAsString === "dir") {
       const existing = current.items.find(
-        (i) => isDirectory(i) && i.name === name
+        (i) => isDirectory(i) && i.name === name,
       );
       if (!existing) {
         current.items.push({

@@ -1,9 +1,6 @@
-import { getInputLines } from "../utils";
+import { getInputLines } from "../utils.ts";
 
-run().catch((err) => {
-  process.exitCode = 1;
-  console.error(err);
-});
+await run();
 
 async function run() {
   const input = await getInputLines();
@@ -31,8 +28,8 @@ function topCalorieCounts(input: string[], count: number): number {
       return;
     }
 
-    elfCalorieCounts[index] =
-      (elfCalorieCounts[index] ?? 0) + parseInt(value, 10);
+    elfCalorieCounts[index] = (elfCalorieCounts[index] ?? 0) +
+      parseInt(value, 10);
   });
 
   elfCalorieCounts.sort((x, y) => x - y);
