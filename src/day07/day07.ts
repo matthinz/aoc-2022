@@ -1,4 +1,8 @@
-import { getInputLines } from "../utils.ts";
+import { runDay } from "../utils.ts";
+
+async function run() {
+  await runDay(partOne, partTwo);
+}
 
 type File = {
   name: string;
@@ -16,14 +20,6 @@ type RootDirectory = {
   items: (File | Directory)[];
   parent?: undefined;
 };
-
-await run();
-
-async function run() {
-  const input = await getInputLines();
-  console.log(partOne(input));
-  console.log(partTwo(input));
-}
 
 function partOne(input: string[]): number {
   const root = parse(input);
@@ -189,4 +185,8 @@ function visitDirs(items: (File | Directory)[], func: (d: Directory) => void) {
       visitDirs(i.items, func);
     }
   });
+}
+
+if (import.meta.main) {
+  await run();
 }

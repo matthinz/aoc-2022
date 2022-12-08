@@ -1,4 +1,8 @@
-import { getInputLines } from "../utils.ts";
+import { runDay } from "../utils.ts";
+
+async function run() {
+  await runDay(partOne, partTwo);
+}
 
 type Move = {
   from: number;
@@ -10,14 +14,6 @@ type Input = {
   stacks: string[][];
   moves: Move[];
 };
-
-await run();
-
-async function run() {
-  const input = await getInputLines();
-  console.log(partOne(input));
-  console.log(partTwo(input));
-}
 
 function partOne(input: string[]): string {
   const parsed = parseInput(input);
@@ -100,4 +96,8 @@ function parseInput(input: string[]): Input {
     });
   });
   return { stacks, moves };
+}
+
+if (import.meta.main) {
+  await run();
 }

@@ -1,17 +1,13 @@
-import { getInputLines } from "../utils.ts";
+import { runDay } from "../utils.ts";
+
+async function run() {
+  await runDay(partOne, partTwo);
+}
 
 type Range = {
   start: number;
   end: number;
 };
-
-await run();
-
-async function run() {
-  const input = await getInputLines();
-  console.log(partOne(input));
-  console.log(partTwo(input));
-}
 
 function partOne(input: string[]): number {
   return input.reduce(function (total, line) {
@@ -82,4 +78,8 @@ function overlap(x: Range, y: Range): boolean {
     (x.start >= y.start && x.start <= y.end) ||
     (x.end >= y.start && x.end <= y.end)
   );
+}
+
+if (import.meta.main) {
+  await run();
 }

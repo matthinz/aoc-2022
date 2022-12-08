@@ -1,6 +1,11 @@
 import { readLines } from "https://deno.land/std@0.167.0/io/mod.ts";
 import * as path from "https://deno.land/std@0.167.0/path/mod.ts";
 
+type PuzzleResult<State> = number | string | {
+  solution: number | string;
+  state?: State;
+};
+
 export async function getInputLines(
   input?: string,
 ): Promise<string[]> {
@@ -44,4 +49,30 @@ export async function getInputLines(
   }
 
   return allLines.slice(startIndex, endIndex + 1);
+}
+
+export async function runDay<State>(
+  part1: (
+    input: string[],
+  ) => PuzzleResult<State> | Promise<PuzzleResult<State>>,
+  part2: (
+    input: string[],
+    state?: State,
+  ) => number | string | Promise<number | string>,
+  input?: string[],
+) {
+  input = input == null ? await getInputLines() : input;
+
+  let result1 = await part1(input);
+
+  if (typeof result1 === "string" || typeof result1 === "number") {
+    result1 = {
+      solution: result1,
+    };
+  }
+
+  console.log("Part 1: %s", result1.solution);
+
+  const result2 = await part2(input, result1.state);
+  console.log("Part 2: %s", result2);
 }

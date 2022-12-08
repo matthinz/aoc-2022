@@ -1,11 +1,7 @@
-import { getInputLines } from "../utils.ts";
-
-await run();
+import { runDay } from "../utils.ts";
 
 async function run() {
-  const input = await getInputLines();
-  console.log(partOne(input));
-  console.log(partTwo(input));
+  await runDay(partOne, partTwo);
 }
 
 function partOne(input: string[]): number {
@@ -65,4 +61,8 @@ function calcPriority(item: string): number {
   } else {
     throw new Error();
   }
+}
+
+if (import.meta.main) {
+  await run();
 }

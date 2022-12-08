@@ -1,9 +1,7 @@
-import { getInputLines } from "../utils.ts";
+import { runDay } from "../utils.ts";
 
 async function run() {
-  const input = await getInputLines();
-  console.log(partOne(input));
-  console.log(partTwo(input));
+  await runDay(partOne, partTwo);
 }
 
 type Player = "rock" | "paper" | "scissors";
@@ -95,4 +93,6 @@ function scoreRound(me: Rule, them: Rule): number {
   return score;
 }
 
-await run();
+if (import.meta.main) {
+  await run();
+}

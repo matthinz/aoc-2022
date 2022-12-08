@@ -1,11 +1,7 @@
-import { getInputLines } from "../utils.ts";
-
-await run();
+import { runDay } from "../utils.ts";
 
 async function run() {
-  const input = await getInputLines();
-  console.log(partOne(input));
-  console.log(partTwo(input));
+  await runDay(partOne, partTwo);
 }
 
 function partOne(input: string[]): number {
@@ -39,4 +35,8 @@ function topCalorieCounts(input: string[], count: number): number {
     .reduce(function (acc, value) {
       return acc + value;
     }, 0);
+}
+
+if (import.meta.main) {
+  await run();
 }

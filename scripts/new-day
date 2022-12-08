@@ -29,25 +29,23 @@ await fs.ensureDir(nextDayPath);
 await Deno.writeTextFile(
   path.join(nextDayPath, `${dayStr}.ts`),
   `
-import { getInputLines } from "../utils.ts";
-  
+import { runDay } from "../utils.ts";
+
 async function run() {
-  const input = await getInputLines();
-  console.log(partOne(input));
-  console.log(partTwo(input));
+  await runDay(partOne, partTwo);
 }
 
-export function partOne(input: string[]): number | string | undefined { 
+export function partOne(input: string[]): number | string | undefined {
     return;
 }
 
-export function partTwo(input: string[]): number | string | undefined { 
+export function partTwo(input: string[]): number | string | undefined {
     return;
 }
 
 if (import.meta.main) {
   await run();
-} 
+}
   `.trim() + "\n",
 );
 
