@@ -87,29 +87,26 @@ function partTwo(input: string[]): number {
         }
       }
 
-      let visibleToTheTop = 0;
+      let visibleAbove = 0;
       for (let y1 = y - 1; y1 >= 0; y1--) {
         const otherHeight = parseInt(input[y1][x], 10);
-        visibleToTheTop++;
+        visibleAbove++;
         if (otherHeight >= treeHeight) {
           break;
         }
       }
 
-      let visibleToTheBottom = 0;
+      let visibleBelow = 0;
       for (let y1 = y + 1; y1 < input.length; y1++) {
         const otherHeight = parseInt(input[y1][x], 10);
-        visibleToTheBottom++;
+        visibleBelow++;
         if (otherHeight >= treeHeight) {
           break;
         }
       }
 
       const scenicScore =
-        visibleToTheLeft *
-        visibleToTheRight *
-        visibleToTheBottom *
-        visibleToTheTop;
+        visibleToTheLeft * visibleToTheRight * visibleBelow * visibleAbove;
 
       if (scenicScore > highestScore) {
         highestScore = scenicScore;
