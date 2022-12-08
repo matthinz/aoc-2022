@@ -163,6 +163,7 @@ function parse(input: string[]): RootDirectory {
 }
 
 function isDirectory(item: File | Directory): item is Directory {
+  // deno-lint-ignore no-explicit-any
   return Array.isArray((item as any).items);
 }
 

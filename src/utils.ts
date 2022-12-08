@@ -14,7 +14,7 @@ export async function getInputLines(
     return input.split("\n");
   }
 
-  let reader: Reader = Deno.stdin;
+  let reader: Deno.Reader = Deno.stdin;
 
   if (Deno.isatty(Deno.stdin.rid)) {
     // Nothing being piped in, try to load the input file for the main module
