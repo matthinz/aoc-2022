@@ -1,0 +1,54 @@
+#!/usr/bin/env deno run --allow-read --allow-write
+import * as fs from "https://deno.land/std@0.167.0/fs/mod.ts";
+import * as path from "https://deno.land/std@0.167.0/path/mod.ts";
+
+const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
+const srcDir = path.join(__dirname, "..", "src");
+
+const days = Array.from(fs.expandGlobSync("day*", {
+  root: srcDir,
+})).filter((d) => d.isDirectory).map((d) => {
+  const m = /day(\d+)$/.exec(d.name);
+  if (!m) {
+    return;
+  }
+  return { index: parseInt(m[1], 10), path: d.path };
+}).filter(Boolean).sort((x, y) => (x?.index ?? 0) - (y?.index ?? 0));
+
+const maxIndex = days[days.length - 1]?.index ?? 0;
+const nextIndex = maxIndex + 1;
+const dayStr = `day${String(nextIndex).padStart(2, "0")}`;
+const nextDayPath = path.join(
+  srcDir,
+  dayStr,
+);
+
+console.log("Creating %s...", nextDayPath);
+await fs.ensureDir(nextDayPath);
+
+await Deno.writeTextFile(
+  path.join(nextDayPath, `${dayStr}.ts`),
+  `
+import { getInputLines } from "../utils.ts";
+  
+async function run() {
+  const input = await getInputLines();
+  console.log(partOne(input));
+  console.log(partTwo(input));
+}
+
+export function partOne(input: string[]): number | string | undefined { 
+    return;
+}
+
+export function partTwo(input: string[]): number | string | undefined { 
+    return;
+}
+
+if (import.meta.main) {
+  await run();
+} 
+  `.trim() + "\n",
+);
+
+await fs.ensureFile(path.join(srcDir, dayStr, "input"));
