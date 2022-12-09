@@ -8,16 +8,15 @@ type Pos = {
 type Direction = "L" | "R" | "U" | "D";
 
 export function partOne(input: string[]): number | string {
-  let knots: Pos[] = [
-    {
-      x: 0,
-      y: 0,
-    },
-    {
-      x: 0,
-      y: 0,
-    },
-  ];
+  return countPlacesTouchedByTail(2, input);
+}
+
+export function partTwo(input: string[]): number | string {
+  return "";
+}
+
+function countPlacesTouchedByTail(knotCount: number, input: string[]): number {
+  let knots: Pos[] = Array(knotCount).fill({ x: 0, y: 0 });
 
   const touchedByTheTail: { [key: string]: boolean } = {};
 
@@ -36,10 +35,6 @@ export function partOne(input: string[]): number | string {
   });
 
   return Object.keys(touchedByTheTail).length;
-}
-
-export function partTwo(input: string[]): number | string {
-  return "";
 }
 
 function move(knots: Pos[], dir: Direction): Pos[] {
