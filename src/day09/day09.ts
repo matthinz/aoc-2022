@@ -12,7 +12,7 @@ export function partOne(input: string[]): number | string {
 }
 
 export function partTwo(input: string[]): number | string {
-  return "";
+  return countPlacesTouchedByTail(10, input);
 }
 
 function countPlacesTouchedByTail(knotCount: number, input: string[]): number {
@@ -27,6 +27,7 @@ function countPlacesTouchedByTail(knotCount: number, input: string[]): number {
 
     for (let i = 0; i < distance; i++) {
       knots = move(knots, dir);
+      // printKnots(knots, `move: ${dir}`);
       const tail = knots[knots.length - 1];
       touchedByTheTail[
         `${tail.x},${tail.y}`
@@ -66,7 +67,13 @@ function move(knots: Pos[], dir: Direction): Pos[] {
       const prev = result[result.length - 1];
       if (!prev) throw new Error();
 
-      const movedKnot = simulateMovement(prev, knot);
+      const movedKnot = simulateMovement(
+        prev,
+        knot,
+        `moving ${index}: ${JSON.stringify(knot)} constrained by ${
+          JSON.stringify(prev)
+        }`,
+      );
       result.push(movedKnot);
 
       return result;
@@ -76,7 +83,7 @@ function move(knots: Pos[], dir: Direction): Pos[] {
 }
 
 // given two positions, returns the new position for <b>
-function simulateMovement(a: Pos, b: Pos): Pos {
+function simulateMovement(a: Pos, b: Pos, context?: string): Pos {
   const xDistance = a.x - b.x;
   const yDistance = a.y - b.y;
 
@@ -104,8 +111,11 @@ function simulateMovement(a: Pos, b: Pos): Pos {
     result.y = a.y;
     result.x += xDistance + (xDistance > 0 ? -1 : 1);
   } else {
-    console.error({ xDistance, yDistance });
-    throw new Error("didn't handle this");
+    // We're the same distance away, so move 1 unit in both directions
+    result.x += xDistance > 0 ? 1 : -1;
+    result.y += yDistance > 0 ? 1 : -1;
+    // console.error("oh no", context, { xDistance, yDistance });
+    //throw new Error("didn't handle this");
   }
 
   return result;
@@ -113,4 +123,49 @@ function simulateMovement(a: Pos, b: Pos): Pos {
 
 if (import.meta.main) {
   await runDay(partOne, partTwo);
+}
+
+function printKnots(knots: Pos[], title: string) {
+  const minX = knots.reduce((min, knot) => {
+    return knot.x < min ? knot.x : min;
+  }, Infinity);
+  const maxX = knots.reduce((max, knot) => {
+    return knot.x > max ? knot.x : max;
+  }, -Infinity);
+  const minY = knots.reduce((min, knot) => {
+    return knot.y < min ? knot.y : min;
+  }, Infinity);
+  const maxY = knots.reduce((max, knot) => {
+    return knot.y > max ? knot.y : max;
+  }, -Infinity);
+
+  const width = maxX - minX;
+  const border = 4;
+
+  console.log(title);
+
+  for (let y = maxY + border; y >= minY - border; y--) {
+    let row = Array(width + border * 2).fill(".").map((_, index) => {
+      const knot = knots.findIndex((k) => k.y === y && k.x === minX + index);
+      if (knot < 0) {
+        return ".";
+      } else if (knot === 0) {
+        return "H";
+      } else if (knot === knots.length - 1) {
+        return "T";
+      } else {
+        return knot;
+      }
+    }).join("");
+
+    row = [
+      Array(border).fill(".").join(""),
+      row,
+      Array(border).fill(".").join(""),
+      ` ${y}`,
+    ].join("");
+
+    console.log(row);
+  }
+  console.log(Array(width + (border * 2)).fill("-").join(""));
 }
