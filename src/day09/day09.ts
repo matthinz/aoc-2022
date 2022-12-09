@@ -8,14 +8,16 @@ type Pos = {
 type Direction = "L" | "R" | "U" | "D";
 
 export function partOne(input: string[]): number | string {
-  let head: Pos = {
-    x: 0,
-    y: 0,
-  };
-  let tail: Pos = {
-    x: 0,
-    y: 0,
-  };
+  let knots: Pos[] = [
+    {
+      x: 0,
+      y: 0,
+    },
+    {
+      x: 0,
+      y: 0,
+    },
+  ];
 
   const touchedByTheTail: { [key: string]: boolean } = {};
 
@@ -25,11 +27,11 @@ export function partOne(input: string[]): number | string {
     const distance = parseInt(parts[1], 10);
 
     for (let i = 0; i < distance; i++) {
-      [head, tail] = move(head, tail, dir);
+      knots = move(knots, dir);
+      const tail = knots[knots.length - 1];
       touchedByTheTail[
         `${tail.x},${tail.y}`
       ] = true;
-      // console.error("%s: %o, %o", dir, head, tail);
     }
   });
 
@@ -40,27 +42,42 @@ export function partTwo(input: string[]): number | string {
   return "";
 }
 
-function move(head: Pos, tail: Pos, dir: Direction): [Pos, Pos] {
-  const newHead = { ...head };
+function move(knots: Pos[], dir: Direction): Pos[] {
+  return knots.reduce<Pos[]>(
+    function (result, knot, index) {
+      if (index === 0) {
+        // actually move one unit in the given direction
+        const newHead = { ...knot };
+        switch (dir) {
+          case "U":
+            newHead.y++;
+            break;
+          case "D":
+            newHead.y--;
+            break;
+          case "L":
+            newHead.x--;
+            break;
+          case "R":
+            newHead.x++;
+            break;
+        }
+        result.push(newHead);
+        return result;
+      }
 
-  switch (dir) {
-    case "U":
-      newHead.y++;
-      break;
-    case "D":
-      newHead.y--;
-      break;
-    case "L":
-      newHead.x--;
-      break;
-    case "R":
-      newHead.x++;
-      break;
-  }
+      // for _all other knots_, we need to move them constrained by the
+      // one ahead of them
+      const prev = result[result.length - 1];
+      if (!prev) throw new Error();
 
-  const newTail = simulateMovement(newHead, tail);
+      const movedKnot = simulateMovement(prev, knot);
+      result.push(movedKnot);
 
-  return [newHead, newTail];
+      return result;
+    },
+    [],
+  );
 }
 
 // given two positions, returns the new position for <b>
