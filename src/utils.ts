@@ -71,8 +71,19 @@ export async function runDay<State>(
     };
   }
 
-  console.log("Part 1: %s", result1.solution);
+  console.log(formatResult(1, result1.solution));
 
   const result2 = await part2(input, result1.state);
-  console.log("Part 2: %s", result2);
+  console.log(formatResult(2, result2));
+}
+
+function formatResult(partIndex: number, result: number | string): string {
+  if (typeof result === "number" || !result.includes("\n")) {
+    return `Part ${partIndex}: ${result}`;
+  }
+
+  return `
+Part ${partIndex}:
+${result.split("\n").map((line) => `  ${line}`).join("\n")}
+`.trim();
 }
