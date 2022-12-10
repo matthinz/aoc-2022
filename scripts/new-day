@@ -35,12 +35,12 @@ async function run() {
   await runDay(partOne, partTwo);
 }
 
-export function partOne(input: string[]): number | string | undefined {
-    return;
+export function partOne(input: string[]): number | string {
+    return "";
 }
 
-export function partTwo(input: string[]): number | string | undefined {
-    return;
+export function partTwo(input: string[]): number | string {
+    return "";
 }
 
 if (import.meta.main) {
