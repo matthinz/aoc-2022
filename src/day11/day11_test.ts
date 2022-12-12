@@ -1,5 +1,16 @@
 import { assertEquals } from "https://deno.land/std@0.167.0/testing/asserts.ts";
-import { parseInput, runSimulation } from "./day11.ts";
+import {
+  calculateMonkeyBusinessLevel,
+  inspectThroughAddition,
+  inspectThroughMultiplication,
+  inspectThroughSquaring,
+  ItemWorryLevel,
+  parseInput,
+  part1WorryManagement,
+  part2WorryManagement,
+  runSimulation,
+} from "./day11.ts";
+import polynomial from "./math.ts";
 
 const input = `
 Monkey 0:
@@ -38,37 +49,119 @@ Deno.test(
     assertEquals(4, monkeys.length);
 
     // Monkey 0
-    assertEquals([79, 98], monkeys[0].items);
-    assertEquals(19, monkeys[0].op(1));
-    assertEquals(true, monkeys[0].test(23));
-    assertEquals(true, monkeys[0].test(46));
-    assertEquals(false, monkeys[0].test(47));
-    assertEquals(2, monkeys[0].trueReceiver);
-    assertEquals(3, monkeys[0].falseReceiver);
-
-    // Monkey 1 (new = old + 6)
-    assertEquals(7, monkeys[1].op(1));
-
-    // Monkey 2
-    assertEquals(16, monkeys[2].op(4));
-
-    // Monkey 3
-    assertEquals(3, monkeys[3].op(0));
+    assertEquals(monkeys[0].itemWorryLevels, [
+      {
+        23: polynomial(10, 3),
+        19: polynomial(3, 4),
+        13: polynomial(1, 6),
+        17: polynomial(11, 4),
+      },
+      {
+        23: polynomial(6, 4),
+        19: polynomial(3, 5),
+        13: polynomial(7, 7),
+        17: polynomial(13, 5),
+      },
+    ]);
+    assertEquals(monkeys[0].testDivisor, 23);
   },
 );
 
-Deno.test("simulation", () => {
+Deno.test("part 1 simulation", () => {
+  const monkeys = parseInput(input);
+
+  runSimulation(
+    monkeys,
+    20,
+    part1WorryManagement,
+  );
+
+  const monkeyBusiness = calculateMonkeyBusinessLevel(monkeys);
+  assertEquals(monkeyBusiness, 10605);
+});
+
+Deno.test("part 2 simulation", () => {
   let monkeys = parseInput(input);
-  runSimulation(monkeys, 1);
+  runSimulation(monkeys, 1, part2WorryManagement);
+  assertEquals([2, 4, 3, 6], monkeys.map((m) => m.itemsInspected));
 
-  assertEquals(monkeys[0].items, [20, 23, 27, 26]);
-  assertEquals(monkeys[1].items, [2080, 25, 167, 207, 401, 1046]);
-  assertEquals(monkeys[2].items, []);
-  assertEquals(monkeys[3].items, []);
+  monkeys = parseInput(input);
+  runSimulation(
+    monkeys,
+    20,
+    part2WorryManagement,
+  );
+  assertEquals([99, 97, 8, 103], monkeys.map((m) => m.itemsInspected));
 
-  runSimulation(monkeys, 1);
-  assertEquals(monkeys[0].items, [695, 10, 71, 135, 350]);
-  assertEquals(monkeys[1].items, [43, 49, 58, 55, 362]);
-  assertEquals(monkeys[2].items, []);
-  assertEquals(monkeys[3].items, []);
+  monkeys = parseInput(input);
+  runSimulation(
+    monkeys,
+    1000,
+    part2WorryManagement,
+  );
+  assertEquals(
+    [5204, 4792, 199, 5192],
+    monkeys.map((m) => m.itemsInspected),
+  );
+
+  monkeys = parseInput(input);
+  runSimulation(
+    monkeys,
+    10000,
+    part2WorryManagement,
+  );
+
+  const monkeyBusiness = calculateMonkeyBusinessLevel(monkeys);
+  assertEquals(monkeyBusiness, 2713310158);
+});
+
+Deno.test("#inspectThroughAddition", () => {
+  const lhs: ItemWorryLevel = {
+    2: polynomial(3, 2),
+    3: polynomial(1, 2),
+    7: polynomial(0, 1),
+  };
+  const actual = inspectThroughAddition(5, lhs);
+  assertEquals(
+    actual,
+    {
+      2: polynomial(0, 6),
+      3: polynomial(0, 4),
+      7: polynomial(5, 1),
+    },
+  );
+});
+
+Deno.test("#inspectThroughMultiplication", () => {
+  const lhs: ItemWorryLevel = {
+    2: polynomial(3, 2),
+    3: polynomial(1, 2),
+    7: polynomial(0, 1),
+  };
+  const actual = inspectThroughMultiplication(5, lhs);
+  assertEquals(
+    actual,
+    {
+      2: polynomial(1, 17),
+      3: polynomial(2, 11),
+      7: polynomial(0, 5),
+    },
+  );
+});
+
+Deno.test("#inspectThroughSquaring", () => {
+  const lhs: ItemWorryLevel = {
+    2: polynomial(3, 2), // 2x + 3
+    3: polynomial(1, 2), // 2x + 1
+    7: polynomial(0, 1), // x
+  };
+  const actual = inspectThroughSquaring(lhs);
+  assertEquals(
+    actual,
+    {
+      2: polynomial(1, 16, 4), // 4x^2 + 12x + 9 = 4x^2 + 16x + 1
+      3: polynomial(1, 4, 4), // 4x^2 + 4x + 1
+      7: polynomial(0, 0, 1), // x^2
+    },
+  );
 });
