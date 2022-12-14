@@ -49,4 +49,27 @@ if (import.meta.main) {
   `.trim() + "\n",
 );
 
+await Deno.writeTextFile(
+  path.join(nextDayPath, `${dayStr}_test.ts`),
+  `
+import { assertEquals } from "https://deno.land/std@0.167.0/testing/asserts.ts";
+import { partOne, partTwo } from "./${dayStr}.ts";
+
+const INPUT = \`
+# TODO: put test input here
+\`.trim().split("\\n");
+
+Deno.test("#partOne", () => {
+  const result = partOne(INPUT);
+  assertEquals(result, undefined);
+});
+
+Deno.test("#partTwo", () => {
+  const result = partTwo(INPUT);
+  assertEquals(result, undefined);
+});
+
+  `.trim() + "\n",
+);
+
 await fs.ensureFile(path.join(srcDir, dayStr, "input"));
