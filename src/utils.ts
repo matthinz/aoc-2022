@@ -87,3 +87,10 @@ Part ${partIndex}:
 ${result.split("\n").map((line) => `  ${line}`).join("\n")}
 `.trim();
 }
+
+/**
+ * Reducer for calculating sum.
+ */
+export function sum<T extends number>(total: T, value: T) {
+  return total + value;
+}
