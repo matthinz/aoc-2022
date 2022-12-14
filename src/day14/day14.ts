@@ -12,10 +12,11 @@ type Point = {
 type Path = Point[];
 
 type Grid = {
-  readonly width: number;
-  readonly height: number;
-  readonly origin: Point;
+  width: number;
+  height: number;
+  origin: Point;
   readonly sandSource: Point;
+  readonly infiniteX: boolean;
   cells: Uint8Array[];
 };
 
@@ -37,31 +38,43 @@ export function partOne(input: string[]): number | string {
     isOver: false,
   };
 
-  drawGrid(grid);
-
   while (!state.isOver) {
     tick(grid, state);
   }
-
-  drawGrid(grid);
 
   return state.sandGrainsAtRest;
 }
 
 export function partTwo(input: string[]): number | string {
-  return "";
+  const grid = parseInput(input, 2);
+
+  const state: GameState = {
+    sandGrainsAtRest: 0,
+    isOver: false,
+  };
+
+  while (!state.isOver) {
+    tick(grid, state);
+  }
+
+  return state.sandGrainsAtRest;
 }
 
 function tick(grid: Grid, state: GameState) {
   if (!state.sandPos) {
     // No sand is present, so add some!
-    state.sandPos = nextSandPos(grid.sandSource, grid);
-    if (!state.sandPos) {
-      console.error("we clogged");
-      state.isOver = true;
-    }
 
-    // TODO: can we end up off the grid here
+    // if there is sand resting at our source, we're clogged
+    const atSandSource = grid
+      .cells[grid.sandSource.y - grid.origin.y][
+        grid.sandSource.x - grid.origin.x
+      ];
+    if (atSandSource !== EMPTY) {
+      state.isOver = true;
+    } else {
+      // Put a moving piece of sand at the sand source and end this tick
+      state.sandPos = grid.sandSource;
+    }
 
     return;
   }
@@ -114,17 +127,37 @@ function nextSandPos(from: Point, grid: Grid): Point | undefined {
   };
 
   return [down, downAndToTheLeft, downAndToTheRight].find((p) => {
+    if (p.y < 0 || p.y >= grid.height) {
+      // we're completely off the grid, y-wise
+      return false;
+    }
+
+    // X is more complicated:
+    // For a grid with an infinite x axis, we need to expand it as it grows
+    while (
+      grid.infiniteX &&
+      (p.x < grid.origin.x || p.x >= grid.origin.x + grid.width)
+    ) {
+      expandGrid(grid);
+    }
+
     // translate into array coords
     const x = p.x - grid.origin.x;
     const y = p.y - grid.origin.y;
 
-    if (x < 0 || x >= grid.width || y < 0 || y >= grid.height) {
-      // we've moved beyond the bounds of the grid, which means this
-      // piece will just keep falling forever.
+    if (x < 0 || x >= grid.width) {
+      if (grid.infiniteX) {
+        throw new Error("fell of the edge");
+      }
+      return true;
+    }
+
+    if (y < 0 || y >= grid.height) {
       return true;
     }
 
     const contents = grid.cells[y][x];
+
     return contents === EMPTY;
   });
 }
@@ -137,7 +170,9 @@ function drawGrid(grid: Grid) {
           x === (grid.sandSource.x - grid.origin.x) &&
           y === (grid.sandSource.y - grid.origin.y)
         ) {
-          return "+";
+          if (c === EMPTY) {
+            return "+";
+          }
         }
 
         switch (c) {
@@ -155,7 +190,53 @@ function drawGrid(grid: Grid) {
   });
 }
 
-function parseInput(input: string[]): Grid {
+function expandGrid(grid: Grid) {
+  const oldWidth = grid.width;
+  if (oldWidth % 2 === 1) {
+    throw new Error("grid width must be even");
+  }
+  const newWidth = oldWidth * 2;
+  const padding = (newWidth - oldWidth) / 2;
+
+  const oldOrigin = grid.origin;
+  const newOrigin = {
+    x: oldOrigin.x - padding,
+    y: oldOrigin.y,
+  };
+
+  const newCells = makeCells(newWidth, grid.height);
+
+  // copy all existing cell data into newCells
+  grid.cells.forEach((oldRow, oldY) => {
+    oldRow.forEach((c, oldX) => {
+      newCells[oldY][padding + oldX] = c;
+    });
+  });
+
+  // extend the floor
+  const floorY = grid.height - 1;
+  const leftFloor = grid.cells[floorY][0];
+  if (leftFloor !== STONE) {
+    throw new Error(`expected stone at left, got ${leftFloor}`);
+  }
+  const rightFloor = grid.cells[floorY][oldWidth - 1];
+  if (rightFloor !== STONE) {
+    throw new Error(`expected stone at right, but got ${rightFloor}`);
+  }
+
+  for (let i = 0; i < padding; i++) {
+    newCells[floorY][i] = leftFloor;
+    newCells[floorY][padding + oldWidth + i] = rightFloor;
+  }
+
+  grid.width = newWidth;
+  grid.origin = newOrigin;
+  grid.cells = newCells;
+
+  // drawGrid(grid);
+}
+
+function parseInput(input: string[], addFloor: false | number = false): Grid {
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = 0;
@@ -186,7 +267,24 @@ function parseInput(input: string[]): Grid {
     throw new Error();
   }
 
-  const width = (maxX - minX) + 1;
+  let width = (maxX - minX) + 1;
+  width = width % 2 === 1 ? width + 1 : width;
+
+  if (addFloor) {
+    // Extend in the y direction to add a floor
+    maxY += addFloor;
+    // and draw a floor
+    paths.push(
+      [{
+        x: minX,
+        y: maxY,
+      }, {
+        x: minX + width - 1,
+        y: maxY,
+      }],
+    );
+  }
+
   const height = (maxY - minY) + 1;
   const origin = {
     x: minX,
@@ -198,9 +296,8 @@ function parseInput(input: string[]): Grid {
     height,
     origin,
     sandSource: { x: 500, y: 0 },
-    cells: Array<Uint8Array>(height).fill(new Uint8Array()).map(() =>
-      new Uint8Array(width)
-    ),
+    infiniteX: !!addFloor,
+    cells: makeCells(width, height),
   };
 
   paths.forEach((path) => drawPath(path, grid));
@@ -235,6 +332,12 @@ function drawPath(path: Path, grid: Grid): void {
       throw new Error("line is neither horizontal or vertical");
     }
   });
+}
+
+function makeCells(width: number, height: number): Uint8Array[] {
+  return Array<Uint8Array>(height).fill(new Uint8Array()).map(() =>
+    new Uint8Array(width)
+  );
 }
 
 if (import.meta.main) {
