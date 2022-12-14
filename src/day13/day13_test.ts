@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.167.0/testing/asserts.ts";
-import { partOne } from "./day13.ts";
+import { partOne, partTwo } from "./day13.ts";
 
 const INPUT = `
 [1,1,3,1,1]
@@ -30,4 +30,9 @@ const INPUT = `
 Deno.test("#partOne", () => {
   const result = partOne(INPUT);
   assertEquals(result, 13);
+});
+
+Deno.test("#partTwo", () => {
+  const result = partTwo(INPUT);
+  assertEquals(result, 140);
 });
