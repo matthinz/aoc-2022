@@ -1,4 +1,4 @@
-import { runDay } from "../utils.ts";
+import { runDay } from "../aoc.ts";
 import polynomial, { Polynomial } from "./math.ts";
 
 export type ItemWorryLevel = {

@@ -1,4 +1,4 @@
-import { runDay } from "../utils.ts";
+import { runDay } from "../aoc.ts";
 
 async function run() {
   await runDay(partOne, partTwo);

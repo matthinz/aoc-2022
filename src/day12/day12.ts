@@ -1,4 +1,4 @@
-import { runDay } from "../utils.ts";
+import { runDay } from "../aoc.ts";
 import { astar, Path, Pos } from "./astar.ts";
 
 type Map = {

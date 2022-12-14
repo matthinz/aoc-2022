@@ -1,4 +1,4 @@
-import { runDay } from "../utils.ts";
+import { runDay } from "../aoc.ts";
 
 const EMPTY = 0;
 const STONE = 1;

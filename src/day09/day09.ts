@@ -1,4 +1,4 @@
-import { runDay } from "../utils.ts";
+import { runDay } from "../aoc.ts";
 
 type Pos = {
   readonly x: number;
