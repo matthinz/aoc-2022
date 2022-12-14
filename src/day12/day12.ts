@@ -16,6 +16,51 @@ async function run() {
 export function partOne(input: string[]): number | string {
   const map = parseInput(input);
 
+  const bestPath = findBestPath(map);
+
+  if (!bestPath) {
+    throw new Error("no best path");
+  }
+
+  // NOTE: "number of steps" = number of nodes - 1 (GAH!)
+  return bestPath.length - 1;
+}
+
+export function partTwo(input: string[]): number | string {
+  const map = parseInput(input);
+  let bestPath: Path | undefined;
+
+  const startingPositions = map.rows.reduce<Pos[]>(
+    function (result, row, y) {
+      row.forEach((height, x) => {
+        if (height === 0) {
+          result.push({ x, y });
+        }
+      });
+      return result;
+    },
+    [],
+  );
+
+  startingPositions.forEach((pos) => {
+    const bestPathFromHere = findBestPath(map, pos);
+    if (!bestPathFromHere) {
+      return;
+    }
+
+    if (bestPath == null || bestPathFromHere.length < bestPath.length) {
+      bestPath = bestPathFromHere;
+    }
+  });
+
+  if (!bestPath) {
+    throw new Error("no best path");
+  }
+
+  return bestPath.length - 1;
+}
+
+function findBestPath(map: Map, start?: Pos): Path | undefined {
   let bestPath: Path | undefined;
 
   const heuristics = [
@@ -27,11 +72,11 @@ export function partOne(input: string[]): number | string {
 
   heuristics.forEach((h) => {
     const path = astar({
-      start: map.start,
+      start: start ?? map.start,
       goal: map.dest,
       d: calculateEdgeWeight.bind(undefined, map),
       findNeighbors: findNeighbors.bind(undefined, map),
-      h: manhattanDistance3D.bind(undefined, map),
+      h,
     });
 
     if (!path) {
@@ -42,18 +87,7 @@ export function partOne(input: string[]): number | string {
     }
   });
 
-  if (!bestPath) {
-    throw new Error();
-  }
-
-  printMap(map, bestPath);
-
-  // NOTE: "number of steps" = number of nodes - 1
-  return bestPath.length - 1;
-}
-
-export function partTwo(input: string[]): number | string {
-  return "";
+  return bestPath;
 }
 
 function findNeighbors(map: Map, pos: Pos): Pos[] {
