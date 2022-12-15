@@ -1,4 +1,5 @@
-import { runDay, sum } from "../utils.ts";
+import { runDay } from "../aoc.ts";
+import { sum } from "../utils.ts";
 
 type Value = number | Value[];
 

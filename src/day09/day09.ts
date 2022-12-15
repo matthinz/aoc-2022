@@ -121,10 +121,6 @@ function simulateMovement(a: Pos, b: Pos, context?: string): Pos {
   return result;
 }
 
-if (import.meta.main) {
-  await runDay(partOne, partTwo);
-}
-
 function printKnots(knots: Pos[], title: string) {
   const minX = knots.reduce((min, knot) => {
     return knot.x < min ? knot.x : min;
@@ -168,4 +164,8 @@ function printKnots(knots: Pos[], title: string) {
     console.log(row);
   }
   console.log(Array(width + (border * 2)).fill("-").join(""));
+}
+
+if (import.meta.main) {
+  runDay(import.meta);
 }
