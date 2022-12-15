@@ -1,15 +1,11 @@
 import { runDay } from "../aoc.ts";
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
 type Range = {
   start: number;
   end: number;
 };
 
-function partOne(input: string[]): number {
+export function partOne(input: string[]): number {
   return input.reduce(function (total, line) {
     const ranges = parseLine(line);
 
@@ -24,7 +20,7 @@ function partOne(input: string[]): number {
   }, 0);
 }
 
-function partTwo(input: string[]): number {
+export function partTwo(input: string[]): number {
   return input.reduce(function (total, line) {
     const ranges = parseLine(line);
 
@@ -81,5 +77,5 @@ function overlap(x: Range, y: Range): boolean {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }

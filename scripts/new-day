@@ -31,10 +31,6 @@ await Deno.writeTextFile(
   `
 import { runDay } from "../aoc.ts";
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
 export function partOne(input: string[]): number | string {
     return "";
 }
@@ -44,7 +40,7 @@ export function partTwo(input: string[]): number | string {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }
   `.trim() + "\n",
 );
@@ -71,5 +67,3 @@ Deno.test("#partTwo", () => {
 
   `.trim() + "\n",
 );
-
-await fs.ensureFile(path.join(srcDir, dayStr, "input"));

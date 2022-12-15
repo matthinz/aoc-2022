@@ -1,9 +1,5 @@
 import { runDay } from "../aoc.ts";
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
 type Player = "rock" | "paper" | "scissors";
 
 type Rule = {
@@ -34,7 +30,7 @@ const rules: Rule[] = [
   },
 ];
 
-function partOne(input: string[]): number {
+export function partOne(input: string[]): number {
   // What would your total score be if everything goes exactly according to your strategy guide?
   return input.reduce((totalScore, round) => {
     const [theirMove, myMove] = round.split(" ");
@@ -50,7 +46,7 @@ function partOne(input: string[]): number {
   }, 0);
 }
 
-function partTwo(input: string[]): number {
+export function partTwo(input: string[]): number {
   // what would your total score be if everything goes exactly according to your strategy guide?
 
   return input.reduce(function (totalScore, round) {
@@ -94,5 +90,5 @@ function scoreRound(me: Rule, them: Rule): number {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }

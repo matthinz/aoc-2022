@@ -1,15 +1,11 @@
 import { runDay } from "../aoc.ts";
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
-function partOne(input: string[]): number {
+export function partOne(input: string[]): number {
   // Find the Elf carrying the most Calories. How many total Calories is that Elf carrying?
   return topCalorieCounts(input, 1);
 }
 
-function partTwo(input: string[]): number {
+export function partTwo(input: string[]): number {
   return topCalorieCounts(input, 3);
 }
 
@@ -38,5 +34,5 @@ function topCalorieCounts(input: string[], count: number): number {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }

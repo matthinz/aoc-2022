@@ -1,9 +1,5 @@
 import { runDay } from "../aoc.ts";
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
 type Move = {
   from: number;
   to: number;
@@ -15,7 +11,7 @@ type Input = {
   moves: Move[];
 };
 
-function partOne(input: string[]): string {
+export function partOne(input: string[]): string {
   const parsed = parseInput(input);
 
   // apply moves
@@ -34,7 +30,7 @@ function partOne(input: string[]): string {
   return parsed.stacks.map((s) => s[s.length - 1] ?? "").join("");
 }
 
-function partTwo(input: string[]): string {
+export function partTwo(input: string[]): string {
   const parsed = parseInput(input);
 
   // apply moves
@@ -99,5 +95,5 @@ function parseInput(input: string[]): Input {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }

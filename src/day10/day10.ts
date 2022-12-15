@@ -1,9 +1,5 @@
 import { runDay } from "../aoc.ts";
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
 export function partOne(input: string[]): number | string {
   const toRead = [20, 60, 100, 140, 180, 220];
   const signalStrengths: number[] = [];
@@ -56,7 +52,7 @@ export function partTwo(input: string[]): number | string {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }
 
 function runProgram(

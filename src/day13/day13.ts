@@ -2,10 +2,6 @@ import { runDay, sum } from "../utils.ts";
 
 type Value = number | Value[];
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
 export function partOne(input: string[]): number | string {
   const allPackets = parseInput(input);
   const pairsInTheRightOrder: number[] = [];
@@ -140,5 +136,5 @@ function listsInTheRightOrder(
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }

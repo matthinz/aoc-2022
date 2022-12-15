@@ -1,9 +1,5 @@
 import { runDay } from "../aoc.ts";
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
 type File = {
   name: string;
   size: number;
@@ -21,7 +17,7 @@ type RootDirectory = {
   parent?: undefined;
 };
 
-function partOne(input: string[]): number {
+export function partOne(input: string[]): number {
   const root = parse(input);
   let totalSize = 0;
   visitDirs(root.items, (d) => {
@@ -34,7 +30,7 @@ function partOne(input: string[]): number {
   return totalSize;
 }
 
-function partTwo(input: string[]): number {
+export function partTwo(input: string[]): number {
   const TOTAL_DISK_SPACE = 70000000;
   const FREE_SPACE_NEEDED = 30000000;
 
@@ -188,5 +184,5 @@ function visitDirs(items: (File | Directory)[], func: (d: Directory) => void) {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }

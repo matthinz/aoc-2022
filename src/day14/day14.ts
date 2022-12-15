@@ -26,10 +26,6 @@ type GameState = {
   isOver: boolean;
 };
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
 export function partOne(input: string[]): number | string {
   const grid = parseInput(input);
 
@@ -341,5 +337,5 @@ function makeCells(width: number, height: number): Uint8Array[] {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }

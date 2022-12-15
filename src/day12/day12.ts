@@ -9,10 +9,6 @@ type Map = {
   height: number;
 };
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
 export function partOne(input: string[]): number | string {
   const map = parseInput(input);
 
@@ -241,5 +237,5 @@ export function printMap(map: Map, path?: Path) {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }

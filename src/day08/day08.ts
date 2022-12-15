@@ -1,10 +1,6 @@
 import { runDay } from "../aoc.ts";
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
-function partOne(input: string[]): number {
+export function partOne(input: string[]): number {
   let visibleCount = 0;
 
   for (let y = 0; y < input.length; y++) {
@@ -53,7 +49,7 @@ function partOne(input: string[]): number {
   return visibleCount;
 }
 
-function partTwo(input: string[]): number {
+export function partTwo(input: string[]): number {
   let highestScore = 0;
 
   for (let y = 0; y < input.length; y++) {
@@ -110,5 +106,5 @@ function partTwo(input: string[]): number {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }

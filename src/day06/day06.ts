@@ -1,10 +1,6 @@
 import { runDay } from "../aoc.ts";
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
-function partOne(input: string[]): number {
+export function partOne(input: string[]): number {
   const line = input[0] ?? "";
 
   for (let i = 3; i < line.length; i++) {
@@ -34,7 +30,7 @@ function partOne(input: string[]): number {
   throw new Error();
 }
 
-function partTwo(input: string[]): number {
+export function partTwo(input: string[]): number {
   const line = input[0] ?? "";
   for (let i = 13; i < line.length; i++) {
     const charCounts: { [key: string]: number } = {};
@@ -59,5 +55,5 @@ function partTwo(input: string[]): number {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }

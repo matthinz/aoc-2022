@@ -15,10 +15,6 @@ type Monkey = {
   itemsInspected: number;
 };
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
 export function partOne(input: string[]): number | string {
   const monkeys = parseInput(input);
 
@@ -355,5 +351,5 @@ function evaluateWorryLevel(l: ItemWorryLevel): number {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }

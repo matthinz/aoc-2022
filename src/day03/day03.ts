@@ -1,10 +1,6 @@
 import { runDay } from "../aoc.ts";
 
-async function run() {
-  await runDay(partOne, partTwo);
-}
-
-function partOne(input: string[]): number {
+export function partOne(input: string[]): number {
   return input.reduce(function (total, line) {
     const first = line.substring(0, line.length / 2);
     const second = line.substring(line.length / 2);
@@ -22,7 +18,7 @@ function partOne(input: string[]): number {
   }, 0);
 }
 
-function partTwo(input: string[]): number {
+export function partTwo(input: string[]): number {
   // go through input in batches of 3
   // find item type common to them
   // sum the priorities
@@ -64,5 +60,5 @@ function calcPriority(item: string): number {
 }
 
 if (import.meta.main) {
-  await run();
+  runDay(import.meta);
 }
