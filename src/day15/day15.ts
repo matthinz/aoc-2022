@@ -1,5 +1,5 @@
 import { runDay } from "../aoc.ts";
-import { calculateExtremePoints, manhattanDistance, Point } from "../utils.ts";
+import { manhattanDistance, Point } from "../utils.ts";
 
 type Sensor = {
   position: Point;
@@ -62,8 +62,87 @@ export function partOne(
   return result;
 }
 
-export function partTwo(input: string[]): number | string {
-  return "";
+export function partTwo(
+  input: string[],
+  minX = 0,
+  maxX = 4000000,
+  minY = 0,
+  maxY = 4000000,
+): number | string {
+  const sensors = parseInput(input);
+
+  const polygons = sensors.map(getExtremesOfBeaconCoverage);
+
+  // Inflate polygons by 1 unit in each direction
+  const inflatedPolygons = polygons.map(({ n, s, e, w }) => {
+    return {
+      n: { x: n.x, y: n.y - 1 },
+      s: { x: s.x, y: s.y + 1 },
+      e: { x: e.x + 1, y: e.y },
+      w: { x: w.x - 1, y: w.y },
+    };
+  });
+
+  // Break polygons up into line segments
+  const lineSegments = inflatedPolygons.reduce<[Point, Point][]>(
+    function (result, { n, s, e, w }) {
+      result.push(
+        [w, n],
+        [n, e],
+        [e, s],
+        [s, w],
+      );
+      return result;
+    },
+    [],
+  );
+
+  // Scan each line segment and look for a point on it that is not inside
+  // any of the polygons
+  let onlyWorkablePoint: Point | undefined;
+
+  for (const segment of lineSegments) {
+    const startX = Math.max(
+      minX,
+      Math.min(segment[0].x, segment[1].x),
+    );
+
+    const endX = Math.min(
+      maxX,
+      Math.max(segment[0].x, segment[1].x),
+    );
+
+    if (startX > endX) {
+      throw new Error("startX > endX");
+    }
+
+    const line = findLine(...segment);
+
+    for (let x = startX; x <= endX; x++) {
+      const y = solveForY(x, line);
+      if (y < minY || y > maxY) {
+        continue;
+      }
+      const p = { x, y };
+      const anySensorWouldSeeThisPoint = sensors.some((s) =>
+        pointInsideBeaconCoverageArea(s, p)
+      );
+      if (!anySensorWouldSeeThisPoint) {
+        onlyWorkablePoint = p;
+        break;
+      }
+    }
+
+    if (onlyWorkablePoint) {
+      break;
+    }
+  }
+
+  if (!onlyWorkablePoint) {
+    throw new Error("no workable point found");
+  }
+
+  return (onlyWorkablePoint.x * 4000000) + onlyWorkablePoint.y;
 }
 
 export function normalizeLineSegments(
@@ -181,8 +260,17 @@ function findLine(a: Point, b: Point): Line {
   return { slope, yIntercept };
 }
 
+function pointInsideBeaconCoverageArea(s: Sensor, p: Point): boolean {
+  return manhattanDistance(s.position, p) <=
+    manhattanDistance(s.position, s.closestBeacon);
+}
+
 function solveForX(y: number, { slope, yIntercept }: Line): number {
   return (y - yIntercept) / slope;
+}
+
+function solveForY(x: number, { slope, yIntercept }: Line): number {
+  return (x * slope) + yIntercept;
 }
 
 /**
@@ -191,7 +279,7 @@ function solveForX(y: number, { slope, yIntercept }: Line): number {
  */
 function getExtremesOfBeaconCoverage(
   s: Sensor,
-): { w: Point; n: Point; e: Point; s: Point } {
+): { n: Point; s: Point; e: Point; w: Point } {
   const distance = manhattanDistance(s.position, s.closestBeacon);
   const { x, y } = s.position;
   return {
