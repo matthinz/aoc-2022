@@ -22,7 +22,7 @@ Deno.test("#partOne", () => {
 
 Deno.test("#partTwo", () => {
   const result = partTwo(INPUT);
-  assertEquals(result, "");
+  assertEquals(result, 1707);
 });
 
 Deno.test("#parseInput", () => {
