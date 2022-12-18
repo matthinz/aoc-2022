@@ -1,5 +1,15 @@
-import { assertEquals } from "https://deno.land/std@0.167.0/testing/asserts.ts";
-import { parseInput, partOne, partTwo } from "./day16.ts";
+import {
+  assert,
+  assertEquals,
+} from "https://deno.land/std@0.167.0/testing/asserts.ts";
+import {
+  Frame,
+  nextFramesForTwoActors,
+  parseInput,
+  partOne,
+  partTwo,
+  Valve,
+} from "./day16.ts";
 
 const INPUT = `
 Valve AA has flow rate=0; tunnels lead to valves DD, II, BB
@@ -64,4 +74,139 @@ Deno.test("#parseInput", () => {
     "AA, JJ",
     "II",
   ]);
+});
+
+Deno.test("#nextFramesForTwoActors", () => {
+  const valves = parseInput(INPUT);
+  const [AA, BB, DD, EE, FF, GG, HH, II, JJ] = [
+    "AA",
+    "BB",
+    "DD",
+    "EE",
+    "FF",
+    "GG",
+    "HH",
+    "II",
+    "JJ",
+  ].map((name) => valves.find((v) => v.name === name) as Valve);
+
+  let frames: Frame[] = [{
+    openValves: [],
+    locations: [AA, AA],
+    pressureReleased: 0,
+    estimatedTotalPressureUltimatelyReleased: 0,
+    totalPressureReleased: 0,
+  }];
+
+  for (let minute = 1; minute <= 10; minute++) {
+    console.log("== Minute %d ==", minute);
+    frames = frames.reduce<Frame[]>(
+      function (nextFrames, frame) {
+        nextFrames.push(...nextFramesForTwoActors(
+          frame,
+          valves,
+          minute,
+          26 - minute,
+        ));
+        return nextFrames;
+      },
+      [],
+    );
+
+    if (minute === 1) {
+      // You move to valve II.
+      // The elephant moves to valve DD.
+      frames = frames.filter((f) =>
+        f.locations[0] === II && f.locations[1] === DD
+      );
+      assertEquals(
+        frames.length,
+        1,
+        `Should have 1 good frame, but have ${frames.length}`,
+      );
+      assertEquals(frames[0].pressureReleased, 0);
+      assertEquals(frames[0].totalPressureReleased, 0);
+    } else if (minute === 2) {
+      // You move to valve JJ.
+      // The elephant opens valve DD.
+      frames = frames.filter((f) =>
+        f.locations[0] === JJ && f.locations[1] === DD && f.openValves[0] === DD
+      );
+      assertEquals(
+        frames.length,
+        1,
+        `Should have 1 good frame, but have ${frames.length}`,
+      );
+      assertEquals(frames[0].pressureReleased, 0);
+      assertEquals(frames[0].totalPressureReleased, 0);
+    } else if (minute === 3) {
+      // You open valve JJ.
+      // The elephant moves to valve EE.
+      frames = frames.filter((f) =>
+        f.locations[0] === JJ && f.locations[1] === EE && f.openValves[1] === JJ
+      );
+      assertEquals(
+        frames.length,
+        1,
+        `Should have 1 good frame, but have ${frames.length}`,
+      );
+      assertEquals(frames[0].pressureReleased, 20);
+      assertEquals(frames[0].totalPressureReleased, 20);
+    } else if (minute === 4) {
+      // You move to valve II.
+      // The elephant moves to valve FF.
+      frames = frames.filter((f) =>
+        f.locations[0] === II && f.locations[1] === FF
+      );
+      assertEquals(
+        frames.length,
+        1,
+        `Should have 1 good frame, but have ${frames.length}`,
+      );
+      assertEquals(frames[0].pressureReleased, 41);
+      assertEquals(frames[0].totalPressureReleased, 61);
+    } else if (minute === 5) {
+      // You move to valve AA.
+      // The elephant moves to valve GG.
+      frames = frames.filter((f) =>
+        f.locations[0] === AA && f.locations[1] === GG
+      );
+      assertEquals(
+        frames.length,
+        1,
+        `Should have 1 good frame, but have ${frames.length}`,
+      );
+      assertEquals(frames[0].pressureReleased, 41);
+      assertEquals(frames[0].totalPressureReleased, 102);
+    } else if (minute === 6) {
+      // You move to valve BB.
+      // The elephant moves to valve HH.
+      frames = frames.filter((f) =>
+        f.locations[0] === BB && f.locations[1] === HH
+      );
+      assertEquals(
+        frames.length,
+        1,
+        `Should have 1 good frame, but have ${frames.length}`,
+      );
+      assertEquals(frames[0].pressureReleased, 41);
+      assertEquals(frames[0].totalPressureReleased, 143);
+    } else if (minute === 7) {
+      // You open valve BB.
+      // The elephant opens valve HH.
+      frames = frames.filter((f) =>
+        f.locations[0] === BB && f.locations[1] === HH &&
+        ((f.openValves[2] === BB && f.openValves[3] === HH) ||
+          (f.openValves[2] === HH && f.openValves[3] === BB))
+      );
+
+      assertEquals(
+        frames.length,
+        1,
+        `Should have 1 good frame, but have ${frames.length}`,
+      );
+      assertEquals(frames[0].pressureReleased, 41);
+      assertEquals(frames[0].totalPressureReleased, 184);
+    }
+  }
 });
