@@ -1,5 +1,10 @@
-import { assertEquals } from "https://deno.land/std@0.167.0/testing/asserts.ts";
-import { createCircularReader, partOne, partTwo } from "./day17.ts";
+import {
+  assert,
+  assertEquals,
+} from "https://deno.land/std@0.167.0/testing/asserts.ts";
+import { Board } from "./board.ts";
+import { createCircularReader, partOne, partTwo, tick } from "./day17.ts";
+import { ROCKS } from "./rock.ts";
 
 const INPUT = `
 >>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>
@@ -29,5 +34,147 @@ Deno.test("#createCircularReader", () => {
   assertEquals(
     actual.join(""),
     "<><><><><>",
+  );
+});
+
+Deno.test("#tick", () => {
+  const board = new Board(7, 10);
+  const nextJet = createCircularReader(INPUT.join("").split(""));
+  const nextRock = createCircularReader(ROCKS);
+
+  tick(board, nextJet, nextRock);
+
+  assertEquals(
+    board.stringify(),
+    `
+----------
+9|       |
+8|       |
+7|       |
+6|       |
+5|       |
+4|       |
+3|  @@@@ |
+2|       |
+1|       |
+0|       |
+----------
+  0123456|
+----------
+`.trim(),
+  );
+
+  tick(board, nextJet, nextRock);
+
+  assertEquals(
+    board.stringify(),
+    `
+----------
+9|       |
+8|       |
+7|       |
+6|       |
+5|       |
+4|       |
+3|       |
+2|   @@@@|
+1|       |
+0|       |
+----------
+  0123456|
+----------
+`.trim(),
+  );
+
+  tick(board, nextJet, nextRock);
+
+  assertEquals(
+    board.stringify(),
+    `
+----------
+9|       |
+8|       |
+7|       |
+6|       |
+5|       |
+4|       |
+3|       |
+2|       |
+1|   @@@@|
+0|       |
+----------
+  0123456|
+----------
+`.trim(),
+  );
+
+  tick(board, nextJet, nextRock);
+
+  assertEquals(
+    board.stringify(),
+    `
+----------
+9|       |
+8|       |
+7|       |
+6|       |
+5|       |
+4|       |
+3|       |
+2|       |
+1|       |
+0|   @@@@|
+----------
+  0123456|
+----------
+`.trim(),
+  );
+
+  tick(board, nextJet, nextRock);
+
+  assertEquals(
+    board.stringify(),
+    `
+----------
+9|       |
+8|       |
+7|       |
+6|       |
+5|       |
+4|       |
+3|       |
+2|       |
+1|       |
+0|  #### |
+----------
+  0123456|
+----------
+`.trim(),
+  );
+
+  for (let i = 0; i < 8; i++) {
+    tick(board, nextJet, nextRock);
+  }
+
+  assertEquals(board.highestRockY, 3);
+
+  assertEquals(
+    board.stringify(),
+    `
+----------
+9|       |
+8|       |
+7|    @  |
+6|    @  |
+5|  @@@  |
+4|       |
+3|   #   |
+2|  ###  |
+1|   #   |
+0|  #### |
+----------
+  0123456|
+----------
+`.trim(),
   );
 });

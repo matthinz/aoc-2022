@@ -7,6 +7,7 @@ export class Board {
   _width = 0;
   _height = 0;
   _pixels: Uint8Array[] = [];
+  _movingRocks: Rock[] = [];
 
   constructor(
     width: number,
@@ -34,7 +35,25 @@ export class Board {
         }
       }
     }
-    return 0;
+    return -1;
+  }
+
+  addMovingRock(rock: Rock): Rock {
+    // > Each rock appears so that its left edge is two units away from the left
+    // > wall and its bottom edge is three units above the highest rock in the
+    // > room (or the floor, if there isn't one).
+
+    const y = this.highestRockY + rock.height + 3;
+
+    while (y >= this.height) {
+      this.grow();
+    }
+
+    rock = rock.position(2, y);
+
+    this._movingRocks.push(rock);
+
+    return rock;
   }
 
   canPlaceRock(rock: Rock): boolean {
@@ -67,7 +86,7 @@ export class Board {
   }
 
   draw() {
-    console.log(this.toString());
+    console.log(this.stringify());
   }
 
   grow() {
@@ -75,6 +94,10 @@ export class Board {
     this._pixels = Array(this._height).fill(null).map((_, y) => {
       return this._pixels[y] ?? new Uint8Array(this.width);
     });
+  }
+
+  hasMovingRocks(): boolean {
+    return this._movingRocks.length > 0;
   }
 
   iterateThroughRockPixels(
@@ -105,6 +128,10 @@ export class Board {
     }
   }
 
+  mapRocks(func: (rock: Rock, index: number) => Rock | undefined) {
+    this._movingRocks = this._movingRocks.map(func).filter(Boolean) as Rock[];
+  }
+
   placeRock(rock: Rock) {
     this.iterateThroughRockPixels(
       rock,
@@ -124,23 +151,23 @@ export class Board {
     );
   }
 
-  stringify(ghostRock?: Rock) {
+  stringify() {
     const grid: string[][] = this._pixels.map(
       (row) => {
         return Array.from(row).map((cell) => cell === EMPTY ? " " : "#");
       },
     );
 
-    if (ghostRock) {
+    this._movingRocks.forEach((rock) => {
       this.iterateThroughRockPixels(
-        ghostRock,
+        rock,
         (rockX, rockY, boardX, boardY) => {
-          if (ghostRock.pixel(rockX, rockY)) {
+          if (rock.pixel(rockX, rockY)) {
             grid[boardY][boardX] = "@";
           }
         },
       );
-    }
+    });
 
     grid.reverse();
 
