@@ -7,8 +7,12 @@ export function partOne(input: string[]): number | string {
   const nextRock = createCircularReader(ROCKS, 2022);
 
   const board = new Board(7, 20);
-
+  let frame = 0;
   while (true) {
+    // console.error(frame++);
+    if (frame === 280) {
+      board.draw();
+    }
     if (!tick(board, nextJet, nextRock)) {
       break;
     }
@@ -18,7 +22,18 @@ export function partOne(input: string[]): number | string {
 }
 
 export function partTwo(input: string[]): number | string {
-  return "";
+  const nextJet = createCircularReader(input.join("").trim().split(""));
+  const nextRock = createCircularReader(ROCKS, 1000000000000);
+
+  const board = new Board(7, 20);
+
+  while (true) {
+    if (!tick(board, nextJet, nextRock)) {
+      break;
+    }
+  }
+
+  return board.highestRockY + 1;
 }
 
 export function createCircularReader<T>(
@@ -33,6 +48,7 @@ export function createCircularReader<T>(
     }
     index++;
     count++;
+
     if (index >= items.length) {
       index = 0;
     }
@@ -89,6 +105,8 @@ export function tick(
     board.placeRock(rock);
     return undefined;
   });
+
+  board.optimize();
 
   return true;
 }

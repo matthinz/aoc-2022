@@ -4,10 +4,12 @@ const EMPTY = 0;
 const STONE = 1;
 
 export class Board {
+  _floor = 0;
   _width = 0;
   _height = 0;
   _pixels: Uint8Array[] = [];
   _movingRocks: Rock[] = [];
+  _lastPlacedRock: Rock | undefined;
 
   constructor(
     width: number,
@@ -31,7 +33,7 @@ export class Board {
     for (let y = this._pixels.length - 1; y >= 0; y--) {
       for (let x = 0; x < this._pixels[y].length; x++) {
         if (this._pixels[y][x] === STONE) {
-          return y;
+          return y + this._floor;
         }
       }
     }
@@ -75,7 +77,12 @@ export class Board {
         return;
       }
 
-      const boardPixel = this._pixels[boardY][boardX];
+      const boardPixelY = boardY - this._floor;
+      if (boardPixelY < 0 || boardPixelY >= this._pixels.length) {
+        throw new Error(`Invalid pixel y: ${boardPixelY}`);
+      }
+
+      const boardPixel = this._pixels[boardPixelY][boardX];
       if (boardPixel !== EMPTY) {
         result = false;
         return false;
@@ -90,8 +97,11 @@ export class Board {
   }
 
   grow() {
-    this._height *= 2;
-    this._pixels = Array(this._height).fill(null).map((_, y) => {
+    this._height = Math.floor(this.height * 1.25);
+
+    const physicalHeight = this._height - this._floor;
+
+    this._pixels = Array(physicalHeight).fill(null).map((_, y) => {
       return this._pixels[y] ?? new Uint8Array(this.width);
     });
   }
@@ -110,16 +120,15 @@ export class Board {
     ) => void | false,
   ) {
     const xInBoard = rock.x;
-    const yInBoard = rock.y - rock.height + 1;
+    const yInBoard = rock.y;
 
     for (let rockY = 0; rockY < rock.height; rockY++) {
       for (let rockX = 0; rockX < rock.width; rockX++) {
-        const tweakedY = (rock.height - rockY) - 1;
         const result = callback(
           rockX,
           rockY,
           xInBoard + rockX,
-          yInBoard + tweakedY,
+          yInBoard - rockY,
         );
         if (result === false) {
           return;
@@ -132,7 +141,75 @@ export class Board {
     this._movingRocks = this._movingRocks.map(func).filter(Boolean) as Rock[];
   }
 
+  optimize() {
+    // if we can trace a line of pixels from (0,y) -> (width-1,y)
+    // then we consider the lowest y on the traced line our new floor
+
+    if (this._movingRocks.length > 0) {
+      return;
+    }
+
+    if (this._lastPlacedRock == null) {
+      return;
+    }
+
+    const traceLine = (
+      x: number,
+      y: number,
+      recurse: boolean,
+    ): number | undefined => {
+      if (x >= this.width) {
+        return y;
+      }
+
+      const pixel = this._pixels[y - this._floor][x];
+      if (pixel !== EMPTY) {
+        return traceLine(x + 1, y, true);
+      }
+
+      if (!recurse) {
+        return;
+      }
+
+      if (y < this.height - 1) {
+        const fromAbove = traceLine(x, y + 1, false);
+        if (fromAbove) {
+          return Math.min(y, fromAbove);
+        }
+      }
+
+      if (y > 0) {
+        const fromBelow = traceLine(x, y - 1, false);
+        if (fromBelow) {
+          return Math.min(y, fromBelow);
+        }
+      }
+    };
+
+    for (let rockY = 0; rockY < this._lastPlacedRock.height; rockY++) {
+      const lowestY = traceLine(0, this._lastPlacedRock.y - rockY, true);
+      if (lowestY) {
+        const prevFloor = this._floor;
+        const newFloor = lowestY;
+
+        const newBufferHeight = this.height - newFloor;
+
+        this._pixels = Array(newBufferHeight).fill(null).map((_, y) => {
+          // row 0 in the buffer will be row prevFloor in the prev pixel array
+          return this._pixels[lowestY + y - prevFloor] ??
+            new Uint8Array(this.width);
+        });
+
+        this._floor = newFloor;
+
+        return;
+      }
+    }
+  }
+
   placeRock(rock: Rock) {
+    const rowsToScan = new Set<number>();
+
     this.iterateThroughRockPixels(
       rock,
       (rockX, rockY, boardX, boardY) => {
@@ -146,9 +223,12 @@ export class Board {
         if (boardY < 0 || boardY >= this.height) {
           throw new Error(`boardY outside bounds (was ${boardY})`);
         }
-        this._pixels[boardY][boardX] = STONE;
+        this._pixels[boardY - this._floor][boardX] = STONE;
+        rowsToScan.add(boardY);
       },
     );
+
+    this._lastPlacedRock = rock;
   }
 
   stringify() {
@@ -171,7 +251,7 @@ export class Board {
 
     grid.reverse();
 
-    const longestY = String(this._pixels.length - 1).length;
+    const longestY = String(this.height - 1).length;
     const hbar = Array(longestY + 1 + this.width + 1).fill("-").join(
       "",
     );
@@ -180,7 +260,10 @@ export class Board {
       hbar,
       ...grid.map((row, y) => {
         return [
-          (grid.length - y - 1).toString().padStart(longestY, " "),
+          (grid.length - y - 1 + this._floor).toString().padStart(
+            longestY,
+            " ",
+          ),
           "|",
           row.join(""),
           "|",

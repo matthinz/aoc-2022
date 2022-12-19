@@ -1,7 +1,4 @@
-import {
-  assert,
-  assertEquals,
-} from "https://deno.land/std@0.167.0/testing/asserts.ts";
+import { assertEquals } from "https://deno.land/std@0.167.0/testing/asserts.ts";
 import { Board } from "./board.ts";
 import { createCircularReader, partOne, partTwo, tick } from "./day17.ts";
 import { ROCKS } from "./rock.ts";
@@ -17,7 +14,7 @@ Deno.test("#partOne", () => {
 
 Deno.test("#partTwo", () => {
   const result = partTwo(INPUT);
-  assertEquals(result, "");
+  assertEquals(result, 1514285714288);
 });
 
 Deno.test("#createCircularReader", () => {

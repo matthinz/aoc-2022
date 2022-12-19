@@ -1,7 +1,4 @@
-import {
-  assert,
-  assertEquals,
-} from "https://deno.land/std@0.167.0/testing/asserts.ts";
+import { assertEquals } from "https://deno.land/std@0.167.0/testing/asserts.ts";
 import { Board } from "./board.ts";
 import { ROCKS } from "./rock.ts";
 
@@ -128,6 +125,54 @@ Deno.test("#placeRock", () => {
   0123456|
 ----------
       `.trim(),
+  );
+});
+
+Deno.test("#placeRock - find new floor", () => {
+  const board = new Board(7, 10);
+
+  board.placeRock(ROCKS[0].position(0, 1));
+  board.placeRock(ROCKS[1].position(4, 3));
+
+  assertEquals(
+    board.stringify(),
+    `
+----------
+9|       |
+8|       |
+7|       |
+6|       |
+5|       |
+4|       |
+3|     # |
+2|    ###|
+1|#### # |
+0|       |
+----------
+  0123456|
+----------
+    `.trim(),
+  );
+
+  board.optimize();
+
+  assertEquals(
+    board.stringify(),
+    `
+----------
+9|       |
+8|       |
+7|       |
+6|       |
+5|       |
+4|       |
+3|     # |
+2|    ###|
+1|#### # |
+----------
+  0123456|
+----------
+    `.trim(),
   );
 });
 
