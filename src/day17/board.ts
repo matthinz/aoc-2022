@@ -64,11 +64,7 @@ export class Board {
 
     const y = this.maxY + rock.height + 3;
 
-    const pixelY = y - this._floor;
-
-    while (this._pixels.length < pixelY + 1) {
-      this._pixels.push(new Uint8Array(this.width));
-    }
+    this.ensureY(y);
 
     rock = rock.position(2, y);
 
@@ -192,39 +188,53 @@ export class Board {
     return { y, offsets };
   }
 
+  /**
+   * Returns whether <rock> can be placed on the board in its current position
+   * without colliding with an edge or with an existing pixel.
+   */
   canPlaceRock(rock: Rock): boolean {
     let result = true;
 
     this.iterateThroughRockPixels(rock, (rockX, rockY, boardX, boardY) => {
+      const rockPixel = rock.pixel(rockX, rockY);
+
+      if (!rockPixel) {
+        // This pixel is empty, so we can put it wherever.
+        return;
+      }
+
+      // We cannot place a pixel outside the X bounds of the board
       if (boardX < 0 || boardX >= this.width) {
         result = false;
         return false;
       }
 
+      // We cannot place a pixel outside the lower Y bounds of the board
       if (boardY < 0) {
         result = false;
         return false;
       }
 
-      const rockPixel = rock.pixel(rockX, rockY);
-      if (!rockPixel) {
-        return;
-      }
+      // Adjust Y for where it'd be in our pixel array
+      const pixelY = boardY - this._floor;
 
-      const boardPixelY = boardY - this._floor;
-
-      if (boardPixelY < 0) {
+      if (pixelY < 0) {
+        // This pixel is below the bounds of our pixel array, which
+        // means it can't be placed here.
         result = false;
         return false;
       }
 
-      if (boardPixelY >= this._pixels.length) {
-        // outside the "bounds" of our board
+      if (pixelY >= this._pixels.length) {
+        // outside the upper bound of the board, but we'll grow it to
+        // accomodate if placed
         return;
       }
 
-      const boardPixel = this._pixels[boardPixelY][boardX];
+      const boardPixel = this._pixels[pixelY][boardX];
+
       if (boardPixel !== EMPTY) {
+        // There is a collision with an existing pixel
         result = false;
         return false;
       }
@@ -233,8 +243,19 @@ export class Board {
     return result;
   }
 
-  draw() {
-    console.log(this.stringify());
+  draw(title?: string) {
+    console.log(this.stringify(title));
+  }
+
+  ensureY(y: number) {
+    const pixelY = y - this._floor;
+    const rowsNeeded = pixelY - this._pixels.length + 1;
+
+    if (rowsNeeded > 0) {
+      this._pixels.push(
+        ...Array(rowsNeeded).fill(null).map(() => new Uint8Array(this.width)),
+      );
+    }
   }
 
   /**
@@ -317,7 +338,6 @@ export class Board {
       }
 
       if (this.rocksPlaced === maxRockCount) {
-        this.draw();
         return this.maxY + 1;
       }
 
@@ -369,40 +389,36 @@ export class Board {
       return;
     }
 
-    const columns: boolean[] = Array(this.width).fill(false);
-    for (let pixelY = this._pixels.length - 1; pixelY > 0; pixelY--) {
-      let allOk = true;
-      const row = this._pixels[pixelY];
-      for (let x = 0; x < this.width; x++) {
-        const pixel = row[x];
-        columns[x] = columns[x] || pixel !== EMPTY;
-        allOk = allOk && columns[x];
-      }
-      if (allOk) {
-        this._floor += pixelY;
-        this._pixels = this._pixels.slice(pixelY);
-        break;
-      }
-    }
-
+    // Remove empty rows from the top of the grid
     while (
       this._pixels.length > 1 &&
       this._pixels[this._pixels.length - 1].every((v) => v === EMPTY)
     ) {
       this._pixels.pop();
     }
+
+    // Find the first solid line and cut the array off there
+    for (let pixelY = this._pixels.length - 1; pixelY >= 0; pixelY--) {
+      const row = this._pixels[pixelY];
+      const isSolid = row.every((pixel) => pixel !== EMPTY);
+
+      if (!isSolid) {
+        continue;
+      }
+
+      const oldFloor = this._floor;
+      const newFloor = oldFloor + pixelY + 1;
+
+      this._pixels = this._pixels.slice(newFloor - oldFloor);
+      this._floor = newFloor;
+
+      return;
+    }
   }
 
   placeRock(rock: Rock) {
     // Grow the pixel grid to allow this
-    const pixelY = rock.y - this._floor;
-    const rowsNeeded = pixelY - this._pixels.length + 1;
-
-    if (rowsNeeded > 0) {
-      this._pixels.push(
-        ...Array(rowsNeeded).fill(null).map(() => new Uint8Array(this.width)),
-      );
-    }
+    this.ensureY(rock.y);
 
     this.iterateThroughRockPixels(
       rock,
@@ -429,7 +445,7 @@ export class Board {
     this._rocksPlaced++;
   }
 
-  stringify() {
+  stringify(title?: string) {
     const grid: string[][] = this._pixels.map(
       (row) => {
         return Array.from(row).map((cell) => cell === EMPTY ? " " : "#");
@@ -456,6 +472,8 @@ export class Board {
 
     return [
       bar,
+      title,
+      title && bar,
       ...grid.map((row, y) => {
         return [
           (grid.length - y - 1 + this._floor).toString().padStart(
@@ -477,7 +495,7 @@ export class Board {
         "|",
       ].join(""),
       bar,
-    ].join("\n");
+    ].filter((x) => x != null).join("\n");
   }
 
   tick() {

@@ -10,7 +10,7 @@ export function partOne(input: string[]): number | string {
 
   const ROCKS_TO_DROP = 2022;
 
-  return board.getHeightAfter(ROCKS_TO_DROP, false);
+  return board.getHeightAfter(ROCKS_TO_DROP, true);
 }
 
 export function partTwo(input: string[]): number | string {

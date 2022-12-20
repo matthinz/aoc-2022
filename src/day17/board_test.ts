@@ -133,16 +133,15 @@ Deno.test("#placeRock - find new floor", () => {
   const rocks = new CircularBuffer(ROCKS);
   const board = new Board(7, jets, rocks);
   board.placeRock(ROCKS[0].position(0, 1));
-  board.placeRock(ROCKS[1].position(4, 3));
+  board.placeRock(ROCKS[1].position(4, 2));
 
   assertEquals(
     board.stringify(),
     `
 ----------
-3|     # |
-2|    ###|
-1|#### # |
-0|       |
+2|     # |
+1|#######|
+0|     # |
 ----------
   0123456|
 ----------
@@ -155,13 +154,11 @@ Deno.test("#placeRock - find new floor", () => {
     board.stringify(),
     `
 ----------
-3|     # |
-2|    ###|
-1|#### # |
+2|     # |
 ----------
   0123456|
 ----------
-    `.trim(),
+        `.trim(),
   );
 });
 
@@ -228,6 +225,7 @@ Deno.test("#calculateBoardState", () => {
 3| ### # |
 2|  # ###|
 1|#### # |
+0|       |
 ----------
   0123456|
 ----------
@@ -251,6 +249,7 @@ Deno.test("#calculateBoardState", () => {
 3|#### # |
 2|### ###|
 1|#### # |
+0|       |
 ----------
   0123456|
 ----------
