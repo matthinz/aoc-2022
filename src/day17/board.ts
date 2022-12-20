@@ -64,7 +64,9 @@ export class Board {
 
     const y = this.maxY + rock.height + 3;
 
-    while (this._pixels.length < y + 1) {
+    const pixelY = y - this._floor;
+
+    while (this._pixels.length < pixelY + 1) {
       this._pixels.push(new Uint8Array(this.width));
     }
 
@@ -210,8 +212,10 @@ export class Board {
       }
 
       const boardPixelY = boardY - this._floor;
+
       if (boardPixelY < 0) {
-        throw new Error(`Invalid pixel y: ${boardPixelY}`);
+        result = false;
+        return false;
       }
 
       if (boardPixelY >= this._pixels.length) {
@@ -282,44 +286,44 @@ export class Board {
     const lastRockIndex = this._rocks.index;
     const key = [...boardShape.offsets, lastJetIndex, lastRockIndex].join(",");
 
-    const index = this._stateHistory.findIndex((i) => i.key === key);
-    if (index < 0) {
+    const prevItem = this._stateHistory.find((i) => i.key === key);
+    if (!prevItem) {
       return;
     }
 
-    for (let i = index; i < this._stateHistory.length - 1; i++) {
-      const thisItem = this._stateHistory[i];
-      const nextItem = this._stateHistory[i + 1];
+    /*
+    If history looks like this: A, B, C, D, B
+    Then we can apply the changes from B -> C -> D -> B until we hit our maxRockCount
+    */
 
-      // We can apply the transition from thisItem -> nextItem
-      const addlRocksPlaced = nextItem.rocksPlaced - thisItem.rocksPlaced;
-      if (this.rocksPlaced + addlRocksPlaced > maxRockCount) {
-        return;
-      }
+    const rocksAddedPerLoop = this.rocksPlaced - prevItem.rocksPlaced;
+    const yAddedPerLoop = this.maxY - prevItem.maxY;
 
-      this._rocksPlaced += addlRocksPlaced;
-      console.error("ff: +%d rocks", addlRocksPlaced);
+    const loopsNeeded = Math.floor(
+      (maxRockCount - this.rocksPlaced) / rocksAddedPerLoop,
+    );
 
-      const addlY = nextItem.maxY - thisItem.maxY;
-      this._maxY += addlY;
+    this._rocksPlaced += loopsNeeded * rocksAddedPerLoop;
+    this._maxY += loopsNeeded * yAddedPerLoop;
+    this._floor += loopsNeeded * yAddedPerLoop;
 
-      this._jets.index = nextItem.lastJetIndex;
-      this._rocks.index = nextItem.lastRockIndex;
-
-      this.applyBoardShapeOffsets(nextItem.offsets);
-    }
+    this.optimize();
   }
 
-  getHeightAfter(maxRockCount: number): number {
+  getHeightAfter(maxRockCount: number, fastForward?: boolean): number {
     while (true) {
       if (this.rocksPlaced > maxRockCount) {
         throw new Error("overran it");
       }
+
       if (this.rocksPlaced === maxRockCount) {
+        this.draw();
         return this.maxY + 1;
       }
 
-      this.fastForward(maxRockCount);
+      if (fastForward == null || fastForward) {
+        this.fastForward(maxRockCount);
+      }
 
       this.tick();
     }
@@ -387,11 +391,19 @@ export class Board {
     ) {
       this._pixels.pop();
     }
-
-    console.error("pixels: %d", this._pixels.length * this.width);
   }
 
   placeRock(rock: Rock) {
+    // Grow the pixel grid to allow this
+    const pixelY = rock.y - this._floor;
+    const rowsNeeded = pixelY - this._pixels.length + 1;
+
+    if (rowsNeeded > 0) {
+      this._pixels.push(
+        ...Array(rowsNeeded).fill(null).map(() => new Uint8Array(this.width)),
+      );
+    }
+
     this.iterateThroughRockPixels(
       rock,
       (rockX, rockY, boardX, boardY) => {
@@ -437,7 +449,7 @@ export class Board {
 
     grid.reverse();
 
-    const longestY = String(this._floor + this._pixels.length).length;
+    const longestY = String(this._floor + this._pixels.length - 1).length;
     const bar = Array(longestY + 1 + this.width + 1).fill("-").join(
       "",
     );
@@ -519,13 +531,5 @@ export class Board {
 
     // Clean up the board in memory a bit
     this.optimize();
-
-    if (this.rocksPlaced % 1000000 == 0) {
-      console.error(
-        "%d rocks placed, height %d",
-        this.rocksPlaced,
-        this.maxY + 1,
-      );
-    }
   }
 }

@@ -6,7 +6,7 @@ import { ROCKS } from "./rock.ts";
 Deno.test("#canPlaceRock - edges", () => {
   const jets = new CircularBuffer("<>".split(""));
   const rocks = new CircularBuffer(ROCKS);
-  const board = new Board(7, 20, jets, rocks);
+  const board = new Board(7, jets, rocks);
 
   const offLeftEdge = ROCKS[0].position(-1, 0);
   assertEquals(
@@ -25,8 +25,8 @@ Deno.test("#canPlaceRock - edges", () => {
   const offTopEdge = ROCKS[0].position(0, 20);
   assertEquals(
     board.canPlaceRock(offTopEdge),
-    false,
-    "should not be able to place rock off top edge",
+    true,
+    "should be able to place rock off top edge",
   );
 
   const offBottomEdge = ROCKS[0].position(0, -1);
@@ -40,7 +40,7 @@ Deno.test("#canPlaceRock - edges", () => {
 Deno.test("#canPlaceRock - intersection with shapes", () => {
   const jets = new CircularBuffer("<>".split(""));
   const rocks = new CircularBuffer(ROCKS);
-  const board = new Board(7, 10, jets, rocks);
+  const board = new Board(7, jets, rocks);
   board.placeRock(
     ROCKS[2].position(4, 6), // backwards "L"
   );
@@ -52,8 +52,6 @@ Deno.test("#canPlaceRock - intersection with shapes", () => {
     board.stringify(),
     `
 ----------
-9|       |
-8|       |
 7| #     |
 6|###   #|
 5| #    #|
@@ -85,7 +83,7 @@ Deno.test("#canPlaceRock - intersection with shapes", () => {
 Deno.test("#placeRock", () => {
   const jets = new CircularBuffer("<>".split(""));
   const rocks = new CircularBuffer(ROCKS);
-  const board = new Board(7, 10, jets, rocks);
+  const board = new Board(7, jets, rocks);
   board.placeRock(
     ROCKS[2].position(4, 6), // backwards "L"
   );
@@ -94,9 +92,6 @@ Deno.test("#placeRock", () => {
     board.stringify(),
     `
 ----------
-9|       |
-8|       |
-7|       |
 6|      #|
 5|      #|
 4|    ###|
@@ -118,8 +113,6 @@ Deno.test("#placeRock", () => {
     board.stringify(),
     `
 ----------
-9|       |
-8|       |
 7| #     |
 6|###   #|
 5| #    #|
@@ -138,7 +131,7 @@ Deno.test("#placeRock", () => {
 Deno.test("#placeRock - find new floor", () => {
   const jets = new CircularBuffer("<>".split(""));
   const rocks = new CircularBuffer(ROCKS);
-  const board = new Board(7, 10, jets, rocks);
+  const board = new Board(7, jets, rocks);
   board.placeRock(ROCKS[0].position(0, 1));
   board.placeRock(ROCKS[1].position(4, 3));
 
@@ -146,12 +139,6 @@ Deno.test("#placeRock - find new floor", () => {
     board.stringify(),
     `
 ----------
-9|       |
-8|       |
-7|       |
-6|       |
-5|       |
-4|       |
 3|     # |
 2|    ###|
 1|#### # |
@@ -168,12 +155,6 @@ Deno.test("#placeRock - find new floor", () => {
     board.stringify(),
     `
 ----------
-9|       |
-8|       |
-7|       |
-6|       |
-5|       |
-4|       |
 3|     # |
 2|    ###|
 1|#### # |
@@ -187,22 +168,12 @@ Deno.test("#placeRock - find new floor", () => {
 Deno.test("#stringify - empty board", () => {
   const jets = new CircularBuffer("<>".split(""));
   const rocks = new CircularBuffer(ROCKS);
-  const board = new Board(7, 10, jets, rocks);
+  const board = new Board(7, jets, rocks);
   const expected = `
-----------
-9|       |
-8|       |
-7|       |
-6|       |
-5|       |
-4|       |
-3|       |
-2|       |
-1|       |
-0|       |
-----------
-  0123456|
-----------
+-----------
+-----------
+   0123456|
+-----------
   `.trim();
 
   assertEquals(board.stringify(), expected);
@@ -211,7 +182,7 @@ Deno.test("#stringify - empty board", () => {
 Deno.test("#calculateBoardState", () => {
   const jets = new CircularBuffer("<>".split(""));
   const rocks = new CircularBuffer(ROCKS);
-  const board = new Board(7, 10, jets, rocks);
+  const board = new Board(7, jets, rocks);
 
   assertEquals({
     y: -1,
@@ -225,12 +196,6 @@ Deno.test("#calculateBoardState", () => {
     board.stringify(),
     `
 ----------
-9|       |
-8|       |
-7|       |
-6|       |
-5|       |
-4|       |
 3|     # |
 2|    ###|
 1|#### # |
@@ -259,11 +224,6 @@ Deno.test("#calculateBoardState", () => {
     board.stringify(),
     `
 ----------
-9|       |
-8|       |
-7|       |
-6|       |
-5|       |
 4|  #    |
 3| ### # |
 2|  # ###|
@@ -283,7 +243,6 @@ Deno.test("#calculateBoardState", () => {
     board.stringify(),
     `
 ----------
-9|       |
 8|  #    |
 7|  #    |
 6|  #    |
