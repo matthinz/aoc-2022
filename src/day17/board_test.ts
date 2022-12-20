@@ -1,9 +1,12 @@
 import { assertEquals } from "https://deno.land/std@0.167.0/testing/asserts.ts";
 import { Board } from "./board.ts";
+import { CircularBuffer } from "./circular_buffer.ts";
 import { ROCKS } from "./rock.ts";
 
 Deno.test("#canPlaceRock - edges", () => {
-  const board = new Board(7, 20);
+  const jets = new CircularBuffer("<>".split(""));
+  const rocks = new CircularBuffer(ROCKS);
+  const board = new Board(7, 20, jets, rocks);
 
   const offLeftEdge = ROCKS[0].position(-1, 0);
   assertEquals(
@@ -35,7 +38,9 @@ Deno.test("#canPlaceRock - edges", () => {
 });
 
 Deno.test("#canPlaceRock - intersection with shapes", () => {
-  const board = new Board(7, 10);
+  const jets = new CircularBuffer("<>".split(""));
+  const rocks = new CircularBuffer(ROCKS);
+  const board = new Board(7, 10, jets, rocks);
   board.placeRock(
     ROCKS[2].position(4, 6), // backwards "L"
   );
@@ -78,7 +83,9 @@ Deno.test("#canPlaceRock - intersection with shapes", () => {
 });
 
 Deno.test("#placeRock", () => {
-  const board = new Board(7, 10);
+  const jets = new CircularBuffer("<>".split(""));
+  const rocks = new CircularBuffer(ROCKS);
+  const board = new Board(7, 10, jets, rocks);
   board.placeRock(
     ROCKS[2].position(4, 6), // backwards "L"
   );
@@ -129,8 +136,9 @@ Deno.test("#placeRock", () => {
 });
 
 Deno.test("#placeRock - find new floor", () => {
-  const board = new Board(7, 10);
-
+  const jets = new CircularBuffer("<>".split(""));
+  const rocks = new CircularBuffer(ROCKS);
+  const board = new Board(7, 10, jets, rocks);
   board.placeRock(ROCKS[0].position(0, 1));
   board.placeRock(ROCKS[1].position(4, 3));
 
@@ -177,7 +185,9 @@ Deno.test("#placeRock - find new floor", () => {
 });
 
 Deno.test("#stringify - empty board", () => {
-  const board = new Board(7, 10);
+  const jets = new CircularBuffer("<>".split(""));
+  const rocks = new CircularBuffer(ROCKS);
+  const board = new Board(7, 10, jets, rocks);
   const expected = `
 ----------
 9|       |
@@ -196,4 +206,108 @@ Deno.test("#stringify - empty board", () => {
   `.trim();
 
   assertEquals(board.stringify(), expected);
+});
+
+Deno.test("#calculateBoardState", () => {
+  const jets = new CircularBuffer("<>".split(""));
+  const rocks = new CircularBuffer(ROCKS);
+  const board = new Board(7, 10, jets, rocks);
+
+  assertEquals({
+    y: -1,
+    offsets: [0, 0, 0, 0, 0, 0, 0],
+  }, board.calculateBoardState());
+
+  board.placeRock(ROCKS[0].position(0, 1));
+  board.placeRock(ROCKS[1].position(4, 3));
+
+  assertEquals(
+    board.stringify(),
+    `
+----------
+9|       |
+8|       |
+7|       |
+6|       |
+5|       |
+4|       |
+3|     # |
+2|    ###|
+1|#### # |
+0|       |
+----------
+  0123456|
+----------
+    `.trim(),
+  );
+
+  assertEquals(
+    { y: 1, offsets: [0, 0, 0, 0, 1, 2, 1] },
+    board.calculateBoardState(),
+  );
+
+  board.optimize();
+
+  assertEquals(
+    { y: 1, offsets: [0, 0, 0, 0, 1, 2, 1] },
+    board.calculateBoardState(),
+  );
+
+  board.placeRock(ROCKS[1].position(1, 4));
+
+  assertEquals(
+    board.stringify(),
+    `
+----------
+9|       |
+8|       |
+7|       |
+6|       |
+5|       |
+4|  #    |
+3| ### # |
+2|  # ###|
+1|#### # |
+----------
+  0123456|
+----------
+    `.trim(),
+  );
+
+  assertEquals(board.calculateBoardState(), undefined);
+
+  board.placeRock(ROCKS[4].position(0, 3));
+  board.placeRock(ROCKS[3].position(2, 8));
+
+  assertEquals(
+    board.stringify(),
+    `
+----------
+9|       |
+8|  #    |
+7|  #    |
+6|  #    |
+5|  #    |
+4|  #    |
+3|#### # |
+2|### ###|
+1|#### # |
+----------
+  0123456|
+----------
+    `.trim(),
+  );
+
+  assertEquals(board.calculateBoardState(), {
+    y: 2,
+    offsets: [
+      1,
+      1,
+      6,
+      1,
+      0,
+      1,
+      0,
+    ],
+  });
 });
