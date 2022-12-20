@@ -216,7 +216,7 @@ Deno.test("#calculateBoardState", () => {
   assertEquals({
     y: -1,
     offsets: [0, 0, 0, 0, 0, 0, 0],
-  }, board.calculateBoardState());
+  }, board.calculateBoardShape());
 
   board.placeRock(ROCKS[0].position(0, 1));
   board.placeRock(ROCKS[1].position(4, 3));
@@ -243,14 +243,14 @@ Deno.test("#calculateBoardState", () => {
 
   assertEquals(
     { y: 1, offsets: [0, 0, 0, 0, 1, 2, 1] },
-    board.calculateBoardState(),
+    board.calculateBoardShape(),
   );
 
   board.optimize();
 
   assertEquals(
     { y: 1, offsets: [0, 0, 0, 0, 1, 2, 1] },
-    board.calculateBoardState(),
+    board.calculateBoardShape(),
   );
 
   board.placeRock(ROCKS[1].position(1, 4));
@@ -274,7 +274,7 @@ Deno.test("#calculateBoardState", () => {
     `.trim(),
   );
 
-  assertEquals(board.calculateBoardState(), undefined);
+  assertEquals(board.calculateBoardShape(), undefined);
 
   board.placeRock(ROCKS[4].position(0, 3));
   board.placeRock(ROCKS[3].position(2, 8));
@@ -298,7 +298,7 @@ Deno.test("#calculateBoardState", () => {
     `.trim(),
   );
 
-  assertEquals(board.calculateBoardState(), {
+  assertEquals(board.calculateBoardShape(), {
     y: 2,
     offsets: [
       1,

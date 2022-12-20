@@ -21,7 +21,7 @@ Deno.test("#partTwo", () => {
 Deno.test("#tick", () => {
   const nextJet = new CircularBuffer(INPUT.join("").split(""));
   const nextRock = new CircularBuffer(ROCKS);
-  const board = new Board(7, 10, nextJet, nextRock);
+  const board = new Board(7, nextJet, nextRock);
 
   board.tick();
 

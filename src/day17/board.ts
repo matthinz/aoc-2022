@@ -1,4 +1,3 @@
-import { max } from "../shared/reducers.ts";
 import { CircularBuffer } from "./circular_buffer.ts";
 import { Rock } from "./rock.ts";
 
@@ -14,7 +13,7 @@ type BoardHistoryItem = {
   offsets: number[];
 };
 
-type BoardState = {
+type BoardShape = {
   y: number;
   offsets: number[];
 };
@@ -26,7 +25,6 @@ export class Board {
 
   _floor = 0;
   _width = 0;
-  _height = 0;
   _pixels: Uint8Array[] = [];
   _movingRocks: Rock[] = [];
   _lastPlacedRock: Rock | undefined;
@@ -36,14 +34,12 @@ export class Board {
 
   constructor(
     width: number,
-    height: number,
     jets: CircularBuffer<string>,
     rocks: CircularBuffer<Rock>,
   ) {
     this._width = width;
-    this._height = height;
 
-    this._pixels = Array(height).fill(null).map(() => new Uint8Array(width));
+    this._pixels = [];
 
     this._jets = jets;
     this._rocks = rocks;
@@ -51,10 +47,6 @@ export class Board {
 
   get width(): number {
     return this._width;
-  }
-
-  get height(): number {
-    return this._height;
   }
 
   get maxY(): number {
@@ -72,8 +64,8 @@ export class Board {
 
     const y = this.maxY + rock.height + 3;
 
-    while (y >= this.height) {
-      this.grow();
+    while (this._pixels.length < y + 1) {
+      this._pixels.push(new Uint8Array(this.width));
     }
 
     rock = rock.position(2, y);
@@ -83,10 +75,34 @@ export class Board {
     return rock;
   }
 
-  /**
-   * Attempts to summarize the board state as a small array.
-   */
-  calculateBoardState(): BoardState | undefined {
+  applyBoardShapeOffsets(offsets: number[]) {
+    // Our new floor will be the our maxY - largest offset
+    const largestOffset = offsets.reduce(
+      function (max, value) {
+        return value > max ? value : max;
+      },
+      -Infinity,
+    );
+
+    if (!isFinite(largestOffset)) {
+      return;
+    }
+
+    this._floor = this.maxY - largestOffset;
+
+    this._pixels = Array(largestOffset + 1).fill(null).map(() =>
+      new Uint8Array(this.width)
+    );
+
+    // apply the offsets (note we need to draw solid lines)
+    offsets.forEach((maxY, x) => {
+      for (let y = maxY; y >= 0; y--) {
+        this._pixels[y][x] = STONE;
+      }
+    });
+  }
+
+  calculateBoardShape(): BoardShape | undefined {
     if (this.hasMovingRocks()) {
       return;
     }
@@ -98,12 +114,14 @@ export class Board {
 
     const columns: ColumnInfo[] = Array(this.width).fill(undefined);
 
-    for (let y = this.height - 1; y >= this._floor; y--) {
+    for (let pixelY = this._pixels.length - 1; pixelY >= 0; pixelY--) {
       for (let x = 0; x < this.width; x++) {
-        const pixel = this._pixels[y - this._floor][x];
+        const pixel = this._pixels[pixelY][x];
         if (pixel === EMPTY) {
           continue;
         }
+
+        const y = this._floor + pixelY;
 
         if (columns[x]) {
           if (columns[x].minY > y + 1) {
@@ -181,7 +199,7 @@ export class Board {
         return false;
       }
 
-      if (boardY < 0 || boardY >= this.height) {
+      if (boardY < 0) {
         result = false;
         return false;
       }
@@ -192,8 +210,13 @@ export class Board {
       }
 
       const boardPixelY = boardY - this._floor;
-      if (boardPixelY < 0 || boardPixelY >= this._pixels.length) {
+      if (boardPixelY < 0) {
         throw new Error(`Invalid pixel y: ${boardPixelY}`);
+      }
+
+      if (boardPixelY >= this._pixels.length) {
+        // outside the "bounds" of our board
+        return;
       }
 
       const boardPixel = this._pixels[boardPixelY][boardX];
@@ -216,17 +239,17 @@ export class Board {
    * @param maxRockCount
    */
   fastForward(maxRockCount: number) {
-    let boardState = this.calculateBoardState();
+    let boardShape = this.calculateBoardShape();
 
-    if (!boardState) {
+    if (!boardShape) {
       // We aren't in a good state to manage fast forwarding
       return;
     }
 
-    this.fastForwardFromBoardState(boardState, maxRockCount);
+    this.fastForwardFromBoardState(boardShape, maxRockCount);
 
-    boardState = this.calculateBoardState();
-    if (!boardState) {
+    boardShape = this.calculateBoardShape();
+    if (!boardShape) {
       return;
     }
 
@@ -238,26 +261,26 @@ export class Board {
     // a similar board state in the future, we can apply intermediate
     // board states quickly.
     const snapshot = {
-      key: [...boardState.offsets, lastJetIndex, lastRockIndex].join(
+      key: [...boardShape.offsets, lastJetIndex, lastRockIndex].join(
         ",",
       ),
       lastJetIndex,
       lastRockIndex,
       maxY: this.maxY,
       rocksPlaced: this.rocksPlaced,
-      offsets: boardState.offsets,
+      offsets: boardShape.offsets,
+      pixelHeight: this._pixels.length,
     };
-    console.error("snapshot", snapshot, this._stateHistory.length);
     this._stateHistory.push(snapshot);
   }
 
   fastForwardFromBoardState(
-    boardState: BoardState,
+    boardShape: BoardShape,
     maxRockCount: number,
   ) {
     const lastJetIndex = this._jets.index;
     const lastRockIndex = this._rocks.index;
-    const key = [...boardState.offsets, lastJetIndex, lastRockIndex].join(",");
+    const key = [...boardShape.offsets, lastJetIndex, lastRockIndex].join(",");
 
     const index = this._stateHistory.findIndex((i) => i.key === key);
     if (index < 0) {
@@ -275,6 +298,7 @@ export class Board {
       }
 
       this._rocksPlaced += addlRocksPlaced;
+      console.error("ff: +%d rocks", addlRocksPlaced);
 
       const addlY = nextItem.maxY - thisItem.maxY;
       this._maxY += addlY;
@@ -282,30 +306,7 @@ export class Board {
       this._jets.index = nextItem.lastJetIndex;
       this._rocks.index = nextItem.lastRockIndex;
 
-      // TODO: Actually apply the offsets to the current board
-      /*
-        Our new floor will be the our maxY - largest offset
-      */
-      const largestOffset = nextItem.offsets.reduce(
-        function (max, value) {
-          return value > max ? value : max;
-        },
-        -Infinity,
-      );
-
-      this._floor = this.maxY - largestOffset;
-      this._height = this.maxY + 10;
-
-      this._pixels = Array(this._height - this._floor).fill(null).map(() =>
-        new Uint8Array(this.width)
-      );
-
-      // apply the offsets
-      nextItem.offsets.forEach((maxY, x) => {
-        for (let y = maxY; y >= 0; y--) {
-          this._pixels[y][x] = STONE;
-        }
-      });
+      this.applyBoardShapeOffsets(nextItem.offsets);
     }
   }
 
@@ -322,16 +323,6 @@ export class Board {
 
       this.tick();
     }
-  }
-
-  grow() {
-    this._height = Math.floor(this.height * 1.25);
-
-    const physicalHeight = this._height - this._floor;
-
-    this._pixels = Array(physicalHeight).fill(null).map((_, y) => {
-      return this._pixels[y] ?? new Uint8Array(this.width);
-    });
   }
 
   hasMovingRocks(): boolean {
@@ -370,69 +361,34 @@ export class Board {
   }
 
   optimize() {
-    // if we can trace a line of pixels from (0,y) -> (width-1,y)
-    // then we consider the lowest y on the traced line our new floor
-
-    if (this._movingRocks.length > 0) {
+    if (this.hasMovingRocks()) {
       return;
     }
 
-    if (this._lastPlacedRock == null) {
-      return;
-    }
-
-    const traceLine = (
-      x: number,
-      y: number,
-      recurse: boolean,
-    ): number | undefined => {
-      if (x >= this.width) {
-        return y;
+    const columns: boolean[] = Array(this.width).fill(false);
+    for (let pixelY = this._pixels.length - 1; pixelY > 0; pixelY--) {
+      let allOk = true;
+      const row = this._pixels[pixelY];
+      for (let x = 0; x < this.width; x++) {
+        const pixel = row[x];
+        columns[x] = columns[x] || pixel !== EMPTY;
+        allOk = allOk && columns[x];
       }
-
-      const pixel = this._pixels[y - this._floor][x];
-      if (pixel !== EMPTY) {
-        return traceLine(x + 1, y, true);
-      }
-
-      if (!recurse) {
-        return;
-      }
-
-      if (y < this.height - 1) {
-        const fromAbove = traceLine(x, y + 1, false);
-        if (fromAbove) {
-          return Math.min(y, fromAbove);
-        }
-      }
-
-      if (y > 0) {
-        const fromBelow = traceLine(x, y - 1, false);
-        if (fromBelow) {
-          return Math.min(y, fromBelow);
-        }
-      }
-    };
-
-    for (let rockY = 0; rockY < this._lastPlacedRock.height; rockY++) {
-      const lowestY = traceLine(0, this._lastPlacedRock.y - rockY, true);
-      if (lowestY) {
-        const prevFloor = this._floor;
-        const newFloor = lowestY;
-
-        const newBufferHeight = this.height - newFloor;
-
-        this._pixels = Array(newBufferHeight).fill(null).map((_, y) => {
-          // row 0 in the buffer will be row prevFloor in the prev pixel array
-          return this._pixels[lowestY + y - prevFloor] ??
-            new Uint8Array(this.width);
-        });
-
-        this._floor = newFloor;
-
-        return;
+      if (allOk) {
+        this._floor += pixelY;
+        this._pixels = this._pixels.slice(pixelY);
+        break;
       }
     }
+
+    while (
+      this._pixels.length > 1 &&
+      this._pixels[this._pixels.length - 1].every((v) => v === EMPTY)
+    ) {
+      this._pixels.pop();
+    }
+
+    console.error("pixels: %d", this._pixels.length * this.width);
   }
 
   placeRock(rock: Rock) {
@@ -446,7 +402,7 @@ export class Board {
         if (boardX < 0 || boardX >= this.width) {
           throw new Error(`boardX outside bounds (was ${boardX}`);
         }
-        if (boardY < 0 || boardY >= this.height) {
+        if (boardY < 0) {
           throw new Error(`boardY outside bounds (was ${boardY})`);
         }
         this._pixels[boardY - this._floor][boardX] = STONE;
@@ -481,7 +437,7 @@ export class Board {
 
     grid.reverse();
 
-    const longestY = String(this.height - 1).length;
+    const longestY = String(this._floor + this._pixels.length).length;
     const bar = Array(longestY + 1 + this.width + 1).fill("-").join(
       "",
     );
@@ -563,5 +519,13 @@ export class Board {
 
     // Clean up the board in memory a bit
     this.optimize();
+
+    if (this.rocksPlaced % 1000000 == 0) {
+      console.error(
+        "%d rocks placed, height %d",
+        this.rocksPlaced,
+        this.maxY + 1,
+      );
+    }
   }
 }
