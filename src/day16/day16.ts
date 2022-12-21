@@ -87,7 +87,7 @@ export function calculatePressureReleaseStats(
 function nextFramesForSingleActor(
   frame: Frame,
   valves: Valve[],
-  minute: number,
+  _minute: number,
   timeRemaining: number,
 ): Frame[] {
   if (frame.locations.length !== 1) {
@@ -162,7 +162,7 @@ function nextFramesForSingleActor(
 export function nextFramesForTwoActors(
   frame: Frame,
   valves: Valve[],
-  minute: number,
+  _minute: number,
   minutesRemaining: number,
 ): Frame[] {
   if (frame.openValves.length === valves.length) {
@@ -397,7 +397,7 @@ function k(frame: Frame): string {
   ].join(",");
 }
 
-function summarizeFrame(frame: Frame) {
+function _summarizeFrame(frame: Frame) {
   const framesInOrder: Frame[] = [];
   for (let f: Frame | undefined = frame; f; f = f.prev) {
     framesInOrder.unshift(f);

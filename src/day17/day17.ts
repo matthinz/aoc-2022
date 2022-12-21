@@ -1,7 +1,7 @@
 import { runDay } from "../aoc.ts";
 import { Board } from "./board.ts";
 import { CircularBuffer } from "./circular_buffer.ts";
-import { Rock, ROCKS } from "./rock.ts";
+import { ROCKS } from "./rock.ts";
 
 export function partOne(input: string[]): number | string {
   const jets = new CircularBuffer(input.join("").trim().split(""));
