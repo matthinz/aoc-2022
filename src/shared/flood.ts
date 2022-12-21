@@ -9,28 +9,31 @@ export function flood<Node>(
   options: FloodOptions<Node>,
 ): IterableIterator<Node> {
   const visited = new Map<string, Node>();
+  const toVisit: Node[] = [node];
 
-  floodNode(node, visited);
+  while (toVisit.length > 0) {
+    const node = toVisit.shift();
 
-  return visited.values();
-
-  function floodNode(node: Node, visited: Map<string, Node>): boolean {
-    const key = options.keyFor(node);
-    if (visited.has(key)) {
-      return true;
+    if (node == null) {
+      continue;
     }
+
+    const key = options.keyFor(node);
+
+    if (visited.has(key)) {
+      continue;
+    }
+
+    visited.set(key, node);
 
     const keepGoing = options.visit(node);
+
     if (keepGoing === false) {
-      return false;
+      break;
     }
 
-    for (const neighbor of options.neighborsOf(node)) {
-      if (!floodNode(neighbor, visited)) {
-        return false;
-      }
-    }
-
-    return true;
+    toVisit.push(...options.neighborsOf(node));
   }
+
+  return visited.values();
 }
