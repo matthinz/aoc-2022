@@ -16,6 +16,18 @@ export function findLargestOutput(
   minutes: number,
   scorer?: Scorer,
 ): number | undefined {
+  const frame = findLargestOutputFrame(blueprint, outputType, minutes, scorer);
+  return frame?.resources[outputType];
+}
+
+export function findLargestOutputFrame(
+  blueprint: Blueprint,
+  outputType: Resource,
+  minutes: number,
+  scorer?: Scorer,
+  seekFrameId?: number,
+  dumpMinute?: number,
+): Frame | undefined {
   let frames: Frame[] = [{
     id: (lastFrameId++),
     robots: {
@@ -35,9 +47,9 @@ export function findLargestOutput(
 
   scorer = scorer ?? createHeuristicScorer(blueprint);
 
-  const TARGET_ID = 9;
-
   for (let minute = 1; minute <= minutes; minute++) {
+    frames = tick(blueprint, frames, minutes, minute, scorer);
+
     const minScore = frames.reduce(
       function (score, frame) {
         return Math.min(score, frame.score);
@@ -50,29 +62,47 @@ export function findLargestOutput(
       },
       -Infinity,
     );
-    const avgScore = frames.reduce(
-      function (total, frame) {
-        return total + frame.score;
-      },
-      0,
-    ) / frames.length;
 
     const countWithMinScore = frames.filter((f) => f.score === minScore).length;
     const countWithMaxScore = frames.filter((f) => f.score === maxScore).length;
-    const countAboveAvg = frames.filter((f) => f.score > avgScore).length;
+    const countWithLowScore = frames.filter((f) => f.score < 1000).length;
+
+    let countWithSoughtFrameId = 0;
+    if (seekFrameId) {
+      countWithSoughtFrameId = frames.filter((frame) => {
+        for (let f: Frame | undefined = frame; f; f = f.prev) {
+          if (f.id === seekFrameId) {
+            return true;
+          }
+        }
+        return false;
+      }).length;
+    }
 
     console.error(
-      "Minute %d: %d (min: %d [%d frames], max: %d [%d frames], avg: %d [%d above avg])",
+      "Minute %d: %d - min: %d (%d frames), max: %d (%d frames), <1000: %d%s",
       minute,
       frames.length,
       minScore,
       countWithMinScore,
       maxScore,
       countWithMaxScore,
-      avgScore,
-      countAboveAvg,
+      countWithLowScore,
+      seekFrameId
+        ? ` - ${countWithSoughtFrameId} with frame ${seekFrameId} in history`
+        : "",
     );
-    frames = tick(blueprint, frames, minutes, minute, scorer);
+
+    if (dumpMinute === minute) {
+      Deno.writeTextFileSync(
+        `minute${minute}.json`,
+        JSON.stringify(
+          frames.map((f) => ({ ...f, prev: f.prev?.id })),
+          null,
+          2,
+        ),
+      );
+    }
   }
 
   frames.sort(
@@ -91,9 +121,7 @@ export function findLargestOutput(
     return undefined;
   }
 
-  console.error(summarize(blueprint, frames[0]));
-
-  return frames[0].resources[outputType];
+  return frames[0];
 }
 
 export function tick(
@@ -125,7 +153,7 @@ export function tick(
 
         const nextFrame = {
           id: (lastFrameId++),
-          // prev: frame,
+          prev: frame,
           robots,
           resources,
           score: 0,
@@ -239,8 +267,15 @@ function collect(robots: ResourceSet, resources: ResourceSet): ResourceSet {
 
 function cull(
   frames: Frame[],
-  minute: number,
+  _minute: number,
 ): Frame[] {
+  const MIN_TO_CULL = 10000;
+  const KEEP = 0.05;
+
+  if (frames.length < MIN_TO_CULL) {
+    return frames;
+  }
+
   frames.sort(
     (a, b) => {
       if (a.score > b.score) {
@@ -253,16 +288,14 @@ function cull(
     },
   );
 
-  return frames.slice(0, 2500);
-
-  return result;
+  return frames.slice(0, Math.floor(frames.length * KEEP));
 }
 
 function k(resources: ResourceSet): string {
   return `c=${resources.clay},g=${resources.geode},ob=${resources.obsidian},or=${resources.ore}`;
 }
 
-function summarize(blueprint: Blueprint, frame: Frame): string {
+function _summarize(blueprint: Blueprint, frame: Frame): string {
   const frames: Frame[] = [];
   for (let f: Frame | undefined = frame; f; f = f.prev) {
     frames.unshift(f);

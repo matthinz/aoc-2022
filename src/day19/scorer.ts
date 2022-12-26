@@ -1,3 +1,4 @@
+import { findLargestOutputFrame } from "./simulation.ts";
 import { Blueprint, Frame, Resource, RESOURCES, ResourceSet } from "./types.ts";
 
 export type Scorer = (
@@ -20,12 +21,15 @@ export function createHeuristicScorer(
     - Clay robots always only cost ore
     - Obsidian robots always cost ore + clay
     - Geode robots always cost obsidian + ore
-
     */
 
     const points: [number, string][] = [];
     const BONUS = 10;
     let shouldLog = Math.random() < 0.000000001;
+
+    if (prev) {
+      add(prev.score, "inherit previous score");
+    }
 
     add(robots.geode * Math.pow(10, BONUS), "having geode robots");
 
@@ -33,19 +37,21 @@ export function createHeuristicScorer(
 
     add(robots.clay * Math.pow(10, BONUS - 4), "having clay robots");
 
+    // reward robot diversity -- if this frame led to us getting a kind of
+    // robot we didn't have before, give it a bonus
     if (prev) {
-      // add(
-      //   robots.geode - prev.robots.geode * Math.pow(10, BONUS),
-      //   "more geode robots than last frame",
-      // );
-      // add(
-      //   robots.obsidian - prev.robots.obsidian * Math.pow(10, BONUS - 4),
-      //   "more obsidian robots than last frame",
-      // );
-      // add(
-      //   robots.clay - prev.robots.clay * Math.pow(10, BONUS - 5),
-      //   "more clay robots than last frame",
-      // );
+      for (let i = 0; i < RESOURCES.length - 1; i++) {
+        const robotType = RESOURCES[i];
+        const nextRobotType = RESOURCES[i + 1];
+        const gotNewKindOfRobot = prev.robots[robotType] > 0 &&
+          prev.robots[nextRobotType] === 0 && robots[nextRobotType] > 0;
+        if (gotNewKindOfRobot) {
+          add(
+            (i + 1) * Math.pow(10, BONUS),
+            `got ${nextRobotType} robots, which we didn't have before`,
+          );
+        }
+      }
     }
 
     add(
