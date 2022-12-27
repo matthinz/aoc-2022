@@ -1,17 +1,28 @@
-export const RESOURCE_TYPES = [
-  "geode",
-  "obsidian",
-  "clay",
-  "ore",
-] as const;
+export const RESOURCES = ["ore", "clay", "obsidian", "geode"] as const;
 
-export type ResourceType = typeof RESOURCE_TYPES[number];
+export type Resource = typeof RESOURCES[number];
+
+export type Cost = {
+  [key in Resource]?: number;
+};
 
 export type RobotCosts = {
-  [key in ResourceType]: { [key in ResourceType]?: number };
+  [key in Resource]: Cost;
 };
 
 export type Blueprint = {
   id: number;
   robotCosts: RobotCosts;
+};
+
+export type ResourceSet = {
+  [key in Resource]: number;
+};
+
+export type Frame = {
+  prev?: Frame;
+  id: number;
+  robots: ResourceSet;
+  resources: ResourceSet;
+  score: number;
 };

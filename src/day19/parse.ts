@@ -1,4 +1,4 @@
-import { Blueprint, ResourceType, RobotCosts } from "./types.ts";
+import { Blueprint, Resource, RobotCosts } from "./types.ts";
 
 export function parseInput(input: string[]): Blueprint[] {
   return input.map((line) => {
@@ -16,11 +16,11 @@ export function parseInput(input: string[]): Blueprint[] {
         if (!m) {
           return result;
         }
-        const key = m[1] as ResourceType;
+        const key = m[1] as Resource;
 
         m[2].split(" and ").map((item) => item.split(" ")).map(
           ([amount, item]) => {
-            return [parseInt(amount, 10), item] as [number, ResourceType];
+            return [parseInt(amount, 10), item] as [number, Resource];
           },
         ).forEach(([amount, item]) => {
           result[key][item] = amount;
