@@ -1,345 +1,215 @@
-import { createHeuristicScorer, Scorer } from "./scorer.ts";
+import { Blueprint, RESOURCE_TYPES, ResourceType } from "./types.ts";
 import {
-  Blueprint,
-  Cost,
-  Frame,
-  Resource,
-  RESOURCES,
-  ResourceSet,
-} from "./types.ts";
+  createFrame,
+  getResource,
+  getResourcesArray,
+  getRobots,
+  getRobotsArray,
+  MAX_PARENT_VALUE,
+  MAX_RESOURCE_VALUE,
+  MAX_ROBOT_VALUE,
+} from "./frame.ts";
 
-let lastFrameId = 0;
+type TickOptions = {
+  blueprint: Blueprint;
+  buffer: BigUint64Array;
+  frameOffsets: number[];
+  minute: number;
+  totalMinutes: number;
+};
 
 export function findLargestOutput(
-  outputType: Resource,
   blueprint: Blueprint,
-  minutes: number,
-  scorer?: Scorer,
-): number | undefined {
-  const frame = findLargestOutputFrame(blueprint, outputType, minutes, scorer);
-  return frame?.resources[outputType];
+  resourceType: ResourceType,
+  totalMinutes: number,
+): number {
+  const buffer = new BigUint64Array(MAX_PARENT_VALUE);
+  const frameOffsets: number[] = [0, 1];
+
+  buffer[0] = createFrame({}, { ore: 1 }, 0);
+
+  for (let minute = 1; minute <= totalMinutes; minute++) {
+    const nextOffset = tick({
+      blueprint,
+      buffer,
+      frameOffsets,
+      minute,
+      totalMinutes,
+    });
+    frameOffsets.push(nextOffset);
+  }
+
+  const lastFrameStart = frameOffsets[frameOffsets.length - 2];
+  const lastFrameEnd = frameOffsets[frameOffsets.length - 1];
+  const lastFrames = buffer.slice(lastFrameStart, lastFrameEnd);
+
+  lastFrames.sort((a, b) => {
+    const aValue = getResource(a, resourceType);
+    const bValue = getResource(b, resourceType);
+    if (aValue > bValue) {
+      return -1;
+    } else if (bValue > aValue) {
+      return 1;
+    } else {
+      return 0;
+    }
+  });
+
+  console.error("sort done");
+
+  return getResource(buffer[0], resourceType);
 }
 
-export function findLargestOutputFrame(
-  blueprint: Blueprint,
-  outputType: Resource,
-  minutes: number,
-  scorer?: Scorer,
-  seekFrameId?: number,
-  dumpMinute?: number,
-): Frame | undefined {
-  let frames: Frame[] = [{
-    id: (lastFrameId++),
-    robots: {
-      clay: 0,
-      geode: 0,
-      obsidian: 0,
-      ore: 1,
-    },
-    resources: {
-      clay: 0,
-      geode: 0,
-      obsidian: 0,
-      ore: 0,
-    },
-    score: 0,
-  }];
+export function tick(
+  { blueprint, buffer, frameOffsets, minute }: TickOptions,
+): number {
+  let offset = frameOffsets[frameOffsets.length - 1];
 
-  scorer = scorer ?? createHeuristicScorer(blueprint);
+  const prevFramesStart = frameOffsets[frameOffsets.length - 2] ?? 0;
+  const prevFramesEnd = offset - 1;
 
-  for (let minute = 1; minute <= minutes; minute++) {
-    frames = tick(blueprint, frames, minutes, minute, scorer);
+  console.error("prev: %d - %d", prevFramesStart, prevFramesEnd);
 
-    const minScore = frames.reduce(
-      function (score, frame) {
-        return Math.min(score, frame.score);
-      },
-      Infinity,
-    );
-    const maxScore = frames.reduce(
-      function (score, frame) {
-        return Math.max(score, frame.score);
-      },
-      -Infinity,
-    );
+  for (let i = prevFramesStart; i <= prevFramesEnd; i++) {
+    const prevFrame = buffer[i];
+    const seen = new Set<bigint>();
+    for (const nextFrame of generateNextFrames(blueprint, prevFrame, i)) {
+      // Don't track duplicate frames
+      if (seen.has(nextFrame)) {
+        continue;
+      }
 
-    const countWithMinScore = frames.filter((f) => f.score === minScore).length;
-    const countWithMaxScore = frames.filter((f) => f.score === maxScore).length;
-    const countWithLowScore = frames.filter((f) => f.score < 1000).length;
+      buffer[offset] = nextFrame;
+      offset++;
+      seen.add(nextFrame);
 
-    let countWithSoughtFrameId = 0;
-    if (seekFrameId) {
-      countWithSoughtFrameId = frames.filter((frame) => {
-        for (let f: Frame | undefined = frame; f; f = f.prev) {
-          if (f.id === seekFrameId) {
-            return true;
-          }
-        }
-        return false;
-      }).length;
+      if (offset % 1000000 === 0) {
+        console.error(offset);
+      }
     }
+  }
 
-    console.error(
-      "Minute %d: %d - min: %d (%d frames), max: %d (%d frames), <1000: %d%s",
-      minute,
-      frames.length,
-      minScore,
-      countWithMinScore,
-      maxScore,
-      countWithMaxScore,
-      countWithLowScore,
-      seekFrameId
-        ? ` - ${countWithSoughtFrameId} with frame ${seekFrameId} in history`
-        : "",
-    );
+  console.error(minute, offset);
 
-    if (dumpMinute === minute) {
-      Deno.writeTextFileSync(
-        `minute${minute}.json`,
-        JSON.stringify(
-          frames.map((f) => ({ ...f, prev: f.prev?.id })),
-          null,
-          2,
-        ),
+  return offset;
+}
+
+function* generateNextFrames(
+  blueprint: Blueprint,
+  parentFrame: bigint,
+  parentFrameOffset: number,
+  resources?: number[],
+  robots?: number[],
+  alreadyYieldedNullFrame?: boolean,
+): Generator<bigint> {
+  resources = resources ?? getResourcesArray(parentFrame);
+  robots = robots ?? getRobotsArray(parentFrame);
+
+  // Yield a frame where we did _nothing_
+  if (!alreadyYieldedNullFrame) {
+    const resourcesAfterCollection = collect(parentFrame, resources);
+    if (resourcesAfterCollection) {
+      yield createFrame(
+        resourcesAfterCollection,
+        robots,
+        parentFrameOffset,
       );
     }
   }
 
-  frames.sort(
-    (a, b) => {
-      if (a.resources[outputType] > b.resources[outputType]) {
-        return -1;
-      } else if (b.resources[outputType] > a.resources[outputType]) {
-        return 1;
-      } else {
-        return 0;
-      }
-    },
-  );
+  for (const i in RESOURCE_TYPES) {
+    const resourceType = RESOURCE_TYPES[i];
 
-  if (frames.length === 0) {
-    return undefined;
-  }
+    const buy = buyRobot(blueprint, resourceType, resources, robots);
 
-  return frames[0];
-}
-
-export function tick(
-  blueprint: Blueprint,
-  frames: Frame[],
-  minutes: number,
-  minute: number,
-  scorer: Scorer,
-): Frame[] {
-  const nextFrames = frames.reduce<Frame[]>(
-    function (result, frame) {
-      /*
-      Phases:
-      1. Spending - Invest resources in new robots
-      2. Collecting - Robots in the field deliver more resources to you
-      3. Provisioning - Bring newly purchased robots online (ready to use next frame)
-      */
-
-      const nextMoves = new Map<
-        string,
-        Pick<Frame, "resources" | "robots">
-      >();
-
-      buildNextMoves(blueprint, frame, nextMoves, minutes - minute);
-
-      for (const move of nextMoves.values()) {
-        const robots = move.robots;
-        const resources = collect(frame.robots, move.resources);
-
-        const nextFrame = {
-          id: (lastFrameId++),
-          prev: frame,
-          robots,
-          resources,
-          score: 0,
-        };
-
-        nextFrame.score = scorer(nextFrame, minutes, minutes - minute);
-
-        result.push(nextFrame);
-      }
-
-      return result;
-    },
-    [],
-  );
-
-  return cull(nextFrames, minute);
-}
-
-export function buildNextMoves(
-  blueprint: Blueprint,
-  { robots, resources }: Pick<Frame, "robots" | "resources">,
-  moves: Map<string, Pick<Frame, "robots" | "resources">>,
-  timeRemaining: number,
-  soFar?: ResourceSet,
-) {
-  soFar = soFar ?? {
-    clay: 0,
-    geode: 0,
-    obsidian: 0,
-    ore: 0,
-  };
-
-  const key = k(soFar);
-
-  if (moves.has(key)) {
-    return;
-  }
-
-  moves.set(key, { robots, resources });
-
-  for (const resourceType of RESOURCES) {
-    const cost = blueprint.robotCosts[resourceType];
-    const [success, resourcesAfterPurchase] = buyRobot(cost, resources);
-    if (!success) {
-      // We couldn't buy this robot.
+    if (!buy) {
       continue;
     }
 
-    // We *could* buy this robot.
-    // Do one variant where we bought it:
-    buildNextMoves(
-      blueprint,
-      {
-        robots: {
-          ...robots,
-          [resourceType]: robots[resourceType] + 1,
-        },
-        resources: resourcesAfterPurchase,
-      },
-      moves,
-      timeRemaining,
-      {
-        ...soFar,
-        [resourceType]: soFar[resourceType] + 1,
-      },
-    );
+    const [resourcesAfterBuying, robotsAfterBuying] = buy;
+    const resourcesAfterCollection = collect(parentFrame, resourcesAfterBuying);
 
-    // Do one variant where we did not
-    buildNextMoves(
-      blueprint,
-      { robots, resources },
-      moves,
-      timeRemaining,
-      soFar,
-    );
+    if (resourcesAfterCollection) {
+      yield createFrame(
+        resourcesAfterCollection,
+        robotsAfterBuying,
+        parentFrameOffset,
+      );
+    }
+
+    for (
+      const frame of generateNextFrames(
+        blueprint,
+        parentFrame,
+        parentFrameOffset,
+        resourcesAfterBuying,
+        robotsAfterBuying,
+        true,
+      )
+    ) {
+      yield frame;
+    }
   }
 }
 
+/**
+ * Attempts to buy a robot of the given type.
+ * Returns the resulting resources set with the cost of the robot deducted.
+ */
 function buyRobot(
-  cost: Cost,
-  resources: ResourceSet,
-): [false] | [true, ResourceSet] {
-  let resourcesLeft: ResourceSet | undefined;
+  blueprint: Blueprint,
+  resourceType: ResourceType,
+  resources: number[],
+  robots: number[],
+): [number[], number[]] | undefined {
+  const cost = blueprint.robotCosts[resourceType];
+  const resourcesAfterBuying: number[] = [];
+  const robotsAfterBuying: number[] = [];
 
-  for (const resource of RESOURCES) {
-    const needed = cost[resource];
+  for (const i in RESOURCE_TYPES) {
+    if (RESOURCE_TYPES[i] === resourceType) {
+      if (robots[i] === MAX_ROBOT_VALUE) {
+        return;
+      }
+      robotsAfterBuying.push(robots[i] + 1);
+    } else {
+      robotsAfterBuying.push(robots[i]);
+    }
+
+    const available = resources[i];
+    const needed = cost[RESOURCE_TYPES[i]];
     if (needed == null) {
+      resourcesAfterBuying.push(available);
       continue;
     }
-
-    if (resources[resource] < needed) {
-      // Don't have enough of this
-      return [false];
-    }
-
-    resourcesLeft = resourcesLeft ?? { ...resources };
-    resourcesLeft[resource] -= needed;
-  }
-
-  return [true, resourcesLeft ?? resources];
-}
-
-function collect(robots: ResourceSet, resources: ResourceSet): ResourceSet {
-  return {
-    "clay": resources.clay + robots.clay,
-    "geode": resources.geode + robots.geode,
-    "obsidian": resources.obsidian + robots.obsidian,
-    ore: resources.ore + robots.ore,
-  };
-}
-
-function cull(
-  frames: Frame[],
-  _minute: number,
-): Frame[] {
-  const MIN_TO_CULL = 10000;
-  const KEEP = 0.05;
-
-  if (frames.length < MIN_TO_CULL) {
-    return frames;
-  }
-
-  frames.sort(
-    (a, b) => {
-      if (a.score > b.score) {
-        return -1;
-      } else if (b.score > a.score) {
-        return 1;
-      } else {
-        return 0;
-      }
-    },
-  );
-
-  return frames.slice(0, Math.floor(frames.length * KEEP));
-}
-
-function k(resources: ResourceSet): string {
-  return `c=${resources.clay},g=${resources.geode},ob=${resources.obsidian},or=${resources.ore}`;
-}
-
-function _summarize(blueprint: Blueprint, frame: Frame): string {
-  const frames: Frame[] = [];
-  for (let f: Frame | undefined = frame; f; f = f.prev) {
-    frames.unshift(f);
-  }
-
-  let prevRobots = frames[0].robots;
-
-  return frames.map((f, index) => {
-    if (index === 0) {
+    if (available >= needed) {
+      resourcesAfterBuying.push(available - needed);
+    } else {
       return;
     }
+  }
 
-    const purchased = RESOURCES.reduce<ResourceSet>(
-      function (result, r) {
-        result[r] = f.robots[r] - prevRobots[r];
-        return result;
-      },
-      {
-        clay: 0,
-        geode: 0,
-        obsidian: 0,
-        ore: 0,
-      },
-    );
+  return [
+    resourcesAfterBuying,
+    robotsAfterBuying,
+  ];
+}
 
-    const result = [
-      `== Minute ${index} ==`,
-      ...RESOURCES.filter((r) => purchased[r] > 0).map(
-        (r) => {
-          const cost = RESOURCES.filter((e) => !!blueprint.robotCosts[r][e])
-            .map((e) => `${blueprint.robotCosts[r][e]} ${e}`).join(",");
-          return `Spend ${cost} to start building a ${r}-collecting robot.`;
-        },
-      ),
-      ...RESOURCES.filter((r) => prevRobots[r] > 0).map(
-        (r) =>
-          `${prevRobots[r]} ${r}-collecting robot collects ${
-            prevRobots[r]
-          } ${r}; you now have ${f.resources[r]} ${r}.`,
-      ),
-    ].join("\n");
-
-    prevRobots = f.robots;
-
-    return result;
-  }).filter(Boolean).join("\n\n");
+/**
+ * Applies new resource collection and returns an updated resources array.
+ */
+function collect(
+  parentFrame: bigint,
+  resources: number[],
+): number[] | undefined {
+  const result: number[] = [];
+  for (const i in RESOURCE_TYPES) {
+    const robots = getRobots(parentFrame, RESOURCE_TYPES[i]);
+    const value = (resources[i] ?? 0) + robots;
+    if (value > MAX_RESOURCE_VALUE) {
+      return;
+    }
+    result.push((resources[i] ?? 0) + robots);
+  }
+  return result;
 }

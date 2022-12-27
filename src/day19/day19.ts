@@ -7,7 +7,7 @@ export function partOne(input: string[]): number | string {
   const blueprints = parseInput(input);
 
   const qualityLevels = blueprints.map((blueprint) => {
-    const mostGeodes = findLargestOutput("geode", blueprint, 24);
+    const mostGeodes = findLargestOutput(blueprint, "geode", 24);
     if (mostGeodes == null) {
       throw new Error(`Could not complete blueprint ${blueprint.id}`);
     }
