@@ -21,7 +21,6 @@ export type ResourceSet = {
 
 export type Frame = {
   prev?: Frame;
-  id: number;
   robots: ResourceSet;
   resources: ResourceSet;
   score: number;

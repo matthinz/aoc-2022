@@ -18,7 +18,19 @@ export function partOne(input: string[]): number | string {
 }
 
 export function partTwo(input: string[]): number | string {
-  return "";
+  const blueprints = parseInput(input).slice(0, 3);
+  if (blueprints.length !== 3) throw new Error();
+
+  return blueprints.reduce(
+    function (result, blueprint) {
+      const geodes = findLargestOutput("geode", blueprint, 32);
+      if (!geodes) {
+        throw new Error("No result");
+      }
+      return result * geodes;
+    },
+    1,
+  );
 }
 
 if (import.meta.main) {

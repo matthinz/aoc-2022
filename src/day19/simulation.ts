@@ -1,8 +1,6 @@
 import { heuristicScorer, Scorer } from "./scorer.ts";
 import { Blueprint, Frame, Resource, RESOURCES, ResourceSet } from "./types.ts";
 
-let lastFrameId = 0;
-
 export function findLargestOutput(
   outputType: Resource,
   blueprint: Blueprint,
@@ -18,11 +16,8 @@ export function findLargestOutputFrame(
   outputType: Resource,
   minutes: number,
   scorer?: Scorer,
-  seekFrameId?: number,
-  dumpMinute?: number,
 ): Frame | undefined {
   let frames: Frame[] = [{
-    id: (lastFrameId++),
     robots: {
       clay: 0,
       geode: 0,
@@ -42,60 +37,6 @@ export function findLargestOutputFrame(
 
   for (let minute = 1; minute <= minutes; minute++) {
     frames = tick(blueprint, frames, minutes, minute, scorer);
-
-    const minScore = frames.reduce(
-      function (score, frame) {
-        return Math.min(score, frame.score);
-      },
-      Infinity,
-    );
-    const maxScore = frames.reduce(
-      function (score, frame) {
-        return Math.max(score, frame.score);
-      },
-      -Infinity,
-    );
-
-    const countWithMinScore = frames.filter((f) => f.score === minScore).length;
-    const countWithMaxScore = frames.filter((f) => f.score === maxScore).length;
-    const countWithLowScore = frames.filter((f) => f.score < 1000).length;
-
-    let countWithSoughtFrameId = 0;
-    if (seekFrameId) {
-      countWithSoughtFrameId = frames.filter((frame) => {
-        for (let f: Frame | undefined = frame; f; f = f.prev) {
-          if (f.id === seekFrameId) {
-            return true;
-          }
-        }
-        return false;
-      }).length;
-    }
-
-    console.error(
-      "Minute %d: %d - min: %d (%d frames), max: %d (%d frames), <1000: %d%s",
-      minute,
-      frames.length,
-      minScore,
-      countWithMinScore,
-      maxScore,
-      countWithMaxScore,
-      countWithLowScore,
-      seekFrameId
-        ? ` - ${countWithSoughtFrameId} with frame ${seekFrameId} in history`
-        : "",
-    );
-
-    if (dumpMinute === minute) {
-      Deno.writeTextFileSync(
-        `minute${minute}.json`,
-        JSON.stringify(
-          frames.map((f) => ({ ...f, prev: f.prev?.id })),
-          null,
-          2,
-        ),
-      );
-    }
   }
 
   frames.sort(
@@ -113,8 +54,6 @@ export function findLargestOutputFrame(
   if (frames.length === 0) {
     return undefined;
   }
-
-  console.error(_summarize(blueprint, frames[0]));
 
   return frames[0];
 }
@@ -172,7 +111,6 @@ export function* getNextFrames(
 
     const frame = {
       prev: prevFrame,
-      id: (lastFrameId++),
       resources: collect(prevFrame.robots, resourcesAfterBuy),
       robots: {
         ...prevFrame.robots,
@@ -189,7 +127,6 @@ export function* getNextFrames(
   // ...and a frame where we don't build anything
   const nullFrame: Frame = {
     prev: prevFrame,
-    id: (lastFrameId++),
     resources: collect(prevFrame.robots, prevFrame.resources),
     robots: prevFrame.robots,
     score: 0,
