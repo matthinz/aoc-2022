@@ -1,12 +1,5 @@
-import { createHeuristicScorer, Scorer } from "./scorer.ts";
-import {
-  Blueprint,
-  Cost,
-  Frame,
-  Resource,
-  RESOURCES,
-  ResourceSet,
-} from "./types.ts";
+import { heuristicScorer, Scorer } from "./scorer.ts";
+import { Blueprint, Frame, Resource, RESOURCES, ResourceSet } from "./types.ts";
 
 let lastFrameId = 0;
 
@@ -45,7 +38,7 @@ export function findLargestOutputFrame(
     score: 0,
   }];
 
-  scorer = scorer ?? createHeuristicScorer(blueprint);
+  scorer = scorer ?? heuristicScorer;
 
   for (let minute = 1; minute <= minutes; minute++) {
     frames = tick(blueprint, frames, minutes, minute, scorer);
@@ -121,13 +114,15 @@ export function findLargestOutputFrame(
     return undefined;
   }
 
+  console.error(_summarize(blueprint, frames[0]));
+
   return frames[0];
 }
 
 export function tick(
   blueprint: Blueprint,
   frames: Frame[],
-  minutes: number,
+  _totalMinutes: number,
   minute: number,
   scorer: Scorer,
 ): Frame[] {
@@ -140,27 +135,13 @@ export function tick(
       3. Provisioning - Bring newly purchased robots online (ready to use next frame)
       */
 
-      const nextMoves = new Map<
-        string,
-        Pick<Frame, "resources" | "robots">
-      >();
+      const nextFrames = getNextFrames(
+        blueprint,
+        frame,
+        scorer,
+      );
 
-      buildNextMoves(blueprint, frame, nextMoves, minutes - minute);
-
-      for (const move of nextMoves.values()) {
-        const robots = move.robots;
-        const resources = collect(frame.robots, move.resources);
-
-        const nextFrame = {
-          id: (lastFrameId++),
-          prev: frame,
-          robots,
-          resources,
-          score: 0,
-        };
-
-        nextFrame.score = scorer(nextFrame, minutes, minutes - minute);
-
+      for (const nextFrame of nextFrames) {
         result.push(nextFrame);
       }
 
@@ -172,95 +153,82 @@ export function tick(
   return cull(nextFrames, minute);
 }
 
-export function buildNextMoves(
+export function* getNextFrames(
   blueprint: Blueprint,
-  { robots, resources }: Pick<Frame, "robots" | "resources">,
-  moves: Map<string, Pick<Frame, "robots" | "resources">>,
-  timeRemaining: number,
-  soFar?: ResourceSet,
-) {
-  soFar = soFar ?? {
-    clay: 0,
-    geode: 0,
-    obsidian: 0,
-    ore: 0,
-  };
-
-  const key = k(soFar);
-
-  if (moves.has(key)) {
-    return;
-  }
-
-  moves.set(key, { robots, resources });
-
+  prevFrame: Frame,
+  scorer: Scorer,
+): Generator<Frame> {
+  // Do a frame where we build 1 of every robot we're able to...
   for (const resourceType of RESOURCES) {
-    const cost = blueprint.robotCosts[resourceType];
-    const [success, resourcesAfterPurchase] = buyRobot(cost, resources);
+    const [success, resourcesAfterBuy] = buyRobot(
+      blueprint,
+      resourceType,
+      prevFrame.resources,
+    );
+
     if (!success) {
-      // We couldn't buy this robot.
       continue;
     }
 
-    // We *could* buy this robot.
-    // Do one variant where we bought it:
-    buildNextMoves(
-      blueprint,
-      {
-        robots: {
-          ...robots,
-          [resourceType]: robots[resourceType] + 1,
-        },
-        resources: resourcesAfterPurchase,
+    const frame = {
+      prev: prevFrame,
+      id: (lastFrameId++),
+      resources: collect(prevFrame.robots, resourcesAfterBuy),
+      robots: {
+        ...prevFrame.robots,
+        [resourceType]: prevFrame.robots[resourceType] + 1,
       },
-      moves,
-      timeRemaining,
-      {
-        ...soFar,
-        [resourceType]: soFar[resourceType] + 1,
-      },
-    );
+      score: 0,
+    };
 
-    // Do one variant where we did not
-    buildNextMoves(
-      blueprint,
-      { robots, resources },
-      moves,
-      timeRemaining,
-      soFar,
-    );
+    frame.score = scorer(frame);
+
+    yield frame;
   }
+
+  // ...and a frame where we don't build anything
+  const nullFrame: Frame = {
+    prev: prevFrame,
+    id: (lastFrameId++),
+    resources: collect(prevFrame.robots, prevFrame.resources),
+    robots: prevFrame.robots,
+    score: 0,
+  };
+
+  nullFrame.score = scorer(nullFrame);
+
+  yield nullFrame;
 }
 
 function buyRobot(
-  cost: Cost,
+  blueprint: Blueprint,
+  robotType: Resource,
   resources: ResourceSet,
 ): [false] | [true, ResourceSet] {
-  let resourcesLeft: ResourceSet | undefined;
+  const resourcesAfterBuy = {
+    ...resources,
+  };
 
-  for (const resource of RESOURCES) {
-    const needed = cost[resource];
+  for (const resourceType of RESOURCES) {
+    const needed = blueprint.robotCosts[robotType][resourceType];
     if (needed == null) {
       continue;
     }
-
-    if (resources[resource] < needed) {
-      // Don't have enough of this
+    if (resourcesAfterBuy[resourceType] < needed) {
+      // Don't have enough to do this
       return [false];
     }
-
-    resourcesLeft = resourcesLeft ?? { ...resources };
-    resourcesLeft[resource] -= needed;
+    resourcesAfterBuy[resourceType] -= needed;
   }
 
-  return [true, resourcesLeft ?? resources];
+  return [true, resourcesAfterBuy];
 }
 
 function collect(robots: ResourceSet, resources: ResourceSet): ResourceSet {
   return {
-    "clay": resources.clay + robots.clay,
-    "geode": resources.geode + robots.geode,
-    "obsidian": resources.obsidian + robots.obsidian,
+    clay: resources.clay + robots.clay,
+    geode: resources.geode + robots.geode,
+    obsidian: resources.obsidian + robots.obsidian,
     ore: resources.ore + robots.ore,
   };
 }
@@ -269,30 +237,29 @@ function cull(
   frames: Frame[],
   _minute: number,
 ): Frame[] {
-  const MIN_TO_CULL = 10000;
-  const KEEP = 0.05;
+  const KEEP = 10000;
 
-  if (frames.length < MIN_TO_CULL) {
+  if (frames.length <= KEEP) {
     return frames;
   }
 
-  frames.sort(
-    (a, b) => {
-      if (a.score > b.score) {
-        return -1;
-      } else if (b.score > a.score) {
-        return 1;
-      } else {
-        return 0;
-      }
-    },
-  );
+  frames.sort(compareFrames);
 
-  return frames.slice(0, Math.floor(frames.length * KEEP));
-}
+  return frames.slice(0, KEEP);
 
-function k(resources: ResourceSet): string {
-  return `c=${resources.clay},g=${resources.geode},ob=${resources.obsidian},or=${resources.ore}`;
+  function compareFrames(a: Frame, b: Frame): number {
+    if (a.score > b.score) {
+      return -1;
+    } else if (b.score > a.score) {
+      return 1;
+    }
+
+    if (a.prev && b.prev) {
+      return compareFrames(a.prev, b.prev);
+    } else {
+      return 0;
+    }
+  }
 }
 
 function _summarize(blueprint: Blueprint, frame: Frame): string {
@@ -301,45 +268,91 @@ function _summarize(blueprint: Blueprint, frame: Frame): string {
     frames.unshift(f);
   }
 
-  let prevRobots = frames[0].robots;
-
-  return frames.map((f, index) => {
+  return frames.map((frame, index) => {
     if (index === 0) {
       return;
     }
 
-    const purchased = RESOURCES.reduce<ResourceSet>(
-      function (result, r) {
-        result[r] = f.robots[r] - prevRobots[r];
-        return result;
-      },
-      {
-        clay: 0,
-        geode: 0,
-        obsidian: 0,
-        ore: 0,
-      },
-    );
-
-    const result = [
+    return [
       `== Minute ${index} ==`,
-      ...RESOURCES.filter((r) => purchased[r] > 0).map(
-        (r) => {
-          const cost = RESOURCES.filter((e) => !!blueprint.robotCosts[r][e])
-            .map((e) => `${blueprint.robotCosts[r][e]} ${e}`).join(",");
-          return `Spend ${cost} to start building a ${r}-collecting robot.`;
-        },
-      ),
-      ...RESOURCES.filter((r) => prevRobots[r] > 0).map(
-        (r) =>
-          `${prevRobots[r]} ${r}-collecting robot collects ${
-            prevRobots[r]
-          } ${r}; you now have ${f.resources[r]} ${r}.`,
-      ),
+      ...purchases(frame),
+      ...collection(frame),
+      ...ready(frame),
     ].join("\n");
-
-    prevRobots = f.robots;
-
-    return result;
   }).filter(Boolean).join("\n\n");
+
+  function purchases(frame: Frame): string[] {
+    return RESOURCES
+      .filter((resourceType) => {
+        return frame.robots[resourceType] >
+          (frame.prev ? frame.prev.robots[resourceType] : 0);
+      })
+      .map(
+        (resourceType) => {
+          const purchased = frame.robots[resourceType] -
+            (frame.prev ? frame.prev.robots[resourceType] : 0);
+
+          const cost = RESOURCES
+            .filter((r) => !!blueprint.robotCosts[resourceType][r])
+            .map((r) =>
+              `${(blueprint.robotCosts[resourceType][r] ?? 0) * purchased} ${r}`
+            ).join(
+              ", ",
+            );
+
+          return `Spend ${cost} to start building ${purchased} ${resourceType}-collecting robot${
+            purchased === 1 ? "" : "s"
+          }.`;
+        },
+      );
+  }
+
+  function collection({ prev, resources }: Frame): string[] {
+    if (!prev) {
+      return [];
+    }
+
+    return RESOURCES
+      .filter((resourceType) => prev.robots[resourceType] > 0)
+      .map((resourceType) => {
+        const count = prev.robots[resourceType];
+        const object = resourceType === "geode"
+          ? `open ${resourceType}${count === 1 ? "" : "s"}`
+          : resourceType;
+        const gerund = resourceType === "geode" ? "cracking" : "collecting";
+        const verb = resourceType === "geode" ? "crack" : "collect";
+        return `${count} ${resourceType}-${gerund} robot${
+          count === 1 ? "" : "s"
+        } ${verb}${
+          count === 1 ? "s" : ""
+        } ${count} ${resourceType}; you now have ${
+          resources[resourceType]
+        } ${object}.`;
+      });
+  }
+
+  function ready({ prev, robots }: Frame): string[] {
+    return RESOURCES
+      .filter((resourceType) => {
+        const purchased = prev
+          ? robots[resourceType] - prev.robots[resourceType]
+          : 0;
+        return purchased > 0;
+      })
+      .map((resourceType) => {
+        const purchased = prev
+          ? robots[resourceType] - prev.robots[resourceType]
+          : 0;
+        const verb = resourceType === "geode" ? "cracking" : "collecting";
+        if (purchased === 1) {
+          return `The new ${resourceType}-${verb} robot is ready; you now have ${
+            robots[resourceType]
+          } of them`;
+        } else {
+          return `The ${purchased} new ${resourceType}-${verb} robots are ready; you now have ${
+            robots[resourceType]
+          } of them`;
+        }
+      });
+  }
 }

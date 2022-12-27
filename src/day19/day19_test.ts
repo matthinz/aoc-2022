@@ -22,5 +22,5 @@ Deno.test("#partOne", () => {
 
 Deno.test("#partTwo", () => {
   const result = partTwo(INPUT);
-  assertEquals(result, undefined);
+  assertEquals(result, "");
 });
